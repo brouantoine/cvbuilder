@@ -1,0 +1,317 @@
+.cv-preview {
+  width: 100%;
+  color: #111827;
+}
+
+.cvp-paper {
+  width: min(100%, 760px);
+  aspect-ratio: 210 / 297;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  padding: 7.5%;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --cv-kicker-size: 0.72rem;
+  --cv-name-size: 2.35rem;
+  --cv-role-size: 1rem;
+  --cv-contact-size: 0.8rem;
+  --cv-section-title-size: 0.84rem;
+  --cv-body-size: 0.76rem;
+  --cv-entry-size: 0.8rem;
+  --cv-tag-size: 0.72rem;
+}
+
+.cvp-header {
+  border-bottom: 2px solid var(--cv-accent);
+  padding-bottom: 4%;
+  margin-bottom: 4.5%;
+}
+
+.cvp-header-with-photo {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  align-items: center;
+  gap: 4.5%;
+}
+
+.cvp-photo {
+  width: 6.5rem;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  object-fit: cover;
+  object-position: 50% 34%;
+  border: 0.22rem solid color-mix(in srgb, var(--cv-accent), #ffffff 74%);
+  background: #f8fafc;
+}
+
+.cvp-header-text {
+  min-width: 0;
+}
+
+.cvp-kicker {
+  margin: 0 0 2%;
+  color: var(--cv-accent);
+  font-size: var(--cv-kicker-size);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.cvp-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: var(--cv-name-size);
+  line-height: 0.98;
+}
+
+.cvp-role {
+  margin: 2.2% 0 0;
+  color: #374151;
+  font-size: var(--cv-role-size);
+  font-weight: 600;
+}
+
+.cvp-contact {
+  margin: 2.4% 0 0;
+  color: #4b5563;
+  font-size: var(--cv-contact-size);
+  line-height: 1.45;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.cvp-contact-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.24rem;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--cv-accent), #ffffff 78%);
+  border-radius: 4px;
+  padding: 0.14rem 0.34rem;
+  background: color-mix(in srgb, var(--cv-accent), #ffffff 94%);
+}
+
+.cvp-contact-item strong {
+  color: var(--cv-accent);
+  font-size: 0.86em;
+  text-transform: uppercase;
+}
+
+.cvp-contact-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cvp-section {
+  margin-bottom: 4.3%;
+}
+
+.cvp-section h3 {
+  margin: 0 0 1.8%;
+  color: var(--cv-accent);
+  font-size: var(--cv-section-title-size);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.cvp-section p,
+.cvp-section li {
+  color: #374151;
+  font-size: var(--cv-body-size);
+  line-height: 1.48;
+}
+
+.cvp-section p {
+  margin: 0;
+}
+
+.cvp-stack {
+  display: grid;
+  gap: 2.6%;
+}
+
+.cvp-entry-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 4%;
+  color: #111827;
+  font-size: var(--cv-entry-size);
+}
+
+.cvp-entry-head span {
+  flex: 0 0 auto;
+  color: #6b7280;
+  font-size: 0.9em;
+}
+
+.cvp-entry-meta {
+  color: #6b7280;
+  margin-top: 0.6% !important;
+}
+
+.cvp-entry ul,
+.cvp-flat-list {
+  margin: 1.2% 0 0;
+  padding-left: 1.1rem;
+}
+
+.cvp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+}
+
+.cvp-tags span {
+  border: 1px solid color-mix(in srgb, var(--cv-accent), #ffffff 72%);
+  color: #1f2937;
+  background: color-mix(in srgb, var(--cv-accent), #ffffff 90%);
+  border-radius: 999px;
+  padding: 0.18rem 0.48rem;
+  font-size: var(--cv-tag-size);
+}
+
+.cv-preview-modern .cvp-paper,
+.cv-preview-creative .cvp-paper {
+  padding: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.cv-preview-modern .cvp-header,
+.cv-preview-creative .cvp-header {
+  margin: 0;
+  padding: 6.5% 7%;
+  border-bottom: none;
+  background: #f8fafc;
+}
+
+.cv-preview-modern .cvp-header-with-photo,
+.cv-preview-creative .cvp-header-with-photo {
+  grid-template-columns: 5.8rem 1fr;
+}
+
+.cv-preview-modern .cvp-photo,
+.cv-preview-creative .cvp-photo {
+  width: 5.8rem;
+}
+
+.cv-preview-modern .cvp-two-column,
+.cv-preview-creative .cvp-two-column {
+  display: grid;
+  grid-template-columns: 1.75fr 0.9fr;
+  gap: 5.5%;
+  padding: 6% 7%;
+}
+
+.cv-preview-modern aside,
+.cv-preview-creative aside {
+  border-left: 1px solid #e5e7eb;
+  padding-left: 12%;
+}
+
+.cv-preview-modern .cvp-tags,
+.cv-preview-creative .cvp-tags {
+  display: grid;
+}
+
+.cv-preview-compact .cvp-paper {
+  padding: 5.6%;
+}
+
+.cv-preview-compact .cvp-header {
+  padding-bottom: 2.6%;
+  margin-bottom: 3%;
+}
+
+.cv-preview-compact .cvp-section {
+  margin-bottom: 2.7%;
+}
+
+.cv-preview-executive .cvp-paper {
+  padding: 8.5%;
+}
+
+.cv-preview-executive .cvp-header {
+  text-align: center;
+  border-bottom-width: 1px;
+}
+
+.cv-preview-executive .cvp-header-with-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.cv-preview-executive .cvp-kicker {
+  color: #6b7280;
+}
+
+.cv-preview-creative .cvp-header {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cv-accent), #ffffff 88%), #ffffff);
+}
+
+.cv-preview-compact-card .cvp-paper {
+  width: 100%;
+  box-shadow: none;
+  border: none;
+  transform-origin: top center;
+  --cv-kicker-size: 0.48rem;
+  --cv-name-size: 0.98rem;
+  --cv-role-size: 0.58rem;
+  --cv-contact-size: 0.48rem;
+  --cv-section-title-size: 0.52rem;
+  --cv-body-size: 0.48rem;
+  --cv-entry-size: 0.5rem;
+  --cv-tag-size: 0.48rem;
+}
+
+.cv-preview-compact-card .cvp-header-with-photo {
+  grid-template-columns: 2.25rem 1fr;
+  gap: 0.45rem;
+}
+
+.cv-preview-compact-card .cvp-photo {
+  width: 2.25rem;
+  border-width: 0.08rem;
+}
+
+.template-card .cv-preview {
+  height: 100%;
+}
+
+.template-card .cvp-paper {
+  height: 100%;
+}
+
+.template-card .cvp-contact,
+.template-card .cvp-entry ul,
+.template-card .cvp-section-hobbies,
+.template-card .cvp-kicker {
+  display: none;
+}
+
+.template-card .cvp-section {
+  margin-bottom: 3.2%;
+}
+
+.template-card .cvp-section p,
+.template-card .cvp-section li {
+  font-size: 0.48rem;
+}
+
+@media (max-width: 700px) {
+  .preview-card-mobile .cvp-paper {
+    --cv-kicker-size: 0.56rem;
+    --cv-name-size: 1.35rem;
+    --cv-role-size: 0.72rem;
+    --cv-contact-size: 0.56rem;
+    --cv-section-title-size: 0.62rem;
+    --cv-body-size: 0.55rem;
+    --cv-entry-size: 0.58rem;
+    --cv-tag-size: 0.52rem;
+  }
+}

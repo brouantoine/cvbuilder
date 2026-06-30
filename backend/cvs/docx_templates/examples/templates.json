@@ -1,0 +1,147 @@
+{
+  "templates": [
+    {
+      "filename": "214-modele-cv-gratuit-sans-payer.docx",
+      "name": "CV Minimaliste Gratuit",
+      "slug": "custom-214-modele-cv-gratuit-sans-payer",
+      "category": "minimal",
+      "description": "Modèle professionnel prêt à personnaliser.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 1
+    },
+    {
+      "filename": "231-modele-cv-etudiant.docx",
+      "name": "CV Etudiant",
+      "slug": "custom-231-modele-cv-etudiant",
+      "category": "minimal",
+      "description": "Modèle clair pour profils étudiants ou premiers emplois.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 2
+    },
+    {
+      "filename": "234-modele-cv-ingenieur.docx",
+      "name": "CV Ingenieur",
+      "slug": "custom-234-modele-cv-ingenieur",
+      "category": "modern",
+      "description": "Modèle structuré pour profils techniques et ingénierie.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 3
+    },
+    {
+      "filename": "262-modele-cv-moderne-femme.docx",
+      "name": "CV Moderne Femme",
+      "slug": "custom-262-modele-cv-moderne-femme",
+      "category": "modern",
+      "description": "Modèle professionnel prêt à personnaliser.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 4
+    },
+    {
+      "filename": "265-modele-cv-neutre.docx",
+      "name": "CV Minimaliste Neutre",
+      "slug": "custom-265-modele-cv-neutre",
+      "category": "minimal",
+      "description": "Modèle professionnel prêt à personnaliser.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 5
+    },
+    {
+      "filename": "279-curriculum-vitae-commercial.docx",
+      "name": "CV Commercial",
+      "slug": "custom-279-curriculum-vitae-commercial",
+      "category": "classic",
+      "description": "Modèle professionnel prêt à personnaliser.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 6
+    },
+    {
+      "filename": "291-modele-cv-restauration.docx",
+      "name": "CV Restauration",
+      "slug": "custom-291-modele-cv-restauration",
+      "category": "classic",
+      "description": "Modèle professionnel prêt à personnaliser.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 7
+    },
+    {
+      "filename": "355-modele-cv-en-anglais.docx",
+      "name": "CV International",
+      "slug": "custom-355-modele-cv-en-anglais",
+      "category": "creative",
+      "description": "Modèle CV en anglais pour candidatures internationales.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 8
+    },
+    {
+      "filename": "357-modele-cv-reconversion.docx",
+      "name": "CV Reconversion",
+      "slug": "custom-357-modele-cv-reconversion",
+      "category": "modern",
+      "description": "Modèle adapté aux transitions professionnelles.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 9
+    },
+    {
+      "filename": "75-modele-cv-debutant.docx",
+      "name": "CV Debutant",
+      "slug": "custom-75-modele-cv-debutant",
+      "category": "minimal",
+      "description": "Modèle clair pour profils étudiants ou premiers emplois.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 10
+    },
+    {
+      "filename": "87-modele-cv-detaille.docx",
+      "name": "CV Detaille",
+      "slug": "custom-87-modele-cv-detaille",
+      "category": "classic",
+      "description": "Modèle professionnel prêt à personnaliser.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 11
+    },
+    {
+      "filename": "Document 9.docx",
+      "name": "CV Archive",
+      "slug": "custom-document-9",
+      "category": "classic",
+      "description": "Modèle professionnel prêt à personnaliser.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": false,
+      "order": 12
+    },
+    {
+      "filename": "stabdard.docx",
+      "name": "CV Standard",
+      "slug": "custom-stabdard",
+      "category": "classic",
+      "description": "Modèle professionnel prêt à personnaliser.",
+      "long_description": "Aperçu généré depuis la première page du fichier DOCX réel.",
+      "is_premium": false,
+      "is_active": true,
+      "order": 13
+    }
+  ]
+}

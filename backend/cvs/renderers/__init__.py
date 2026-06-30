@@ -1,0 +1,2 @@
+"""Rendu visuel des CV."""
+

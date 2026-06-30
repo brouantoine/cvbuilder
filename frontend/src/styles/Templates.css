@@ -1,0 +1,182 @@
+/* Templates Page */
+
+.templates-page {
+  min-height: 100vh;
+  padding: 40px 20px;
+  background:
+    linear-gradient(180deg, #ffffff 0, var(--bg) 340px),
+    var(--bg);
+}
+
+.templates-header {
+  max-width: 1400px;
+  margin: 0 auto 40px;
+  text-align: center;
+}
+
+.templates-header h1 {
+  font-size: 2.35rem;
+  font-weight: 820;
+  color: var(--text);
+  margin: 0 0 12px 0;
+  line-height: 1.2;
+}
+
+.templates-subtitle {
+  font-size: 16px;
+  color: var(--muted);
+  margin: 0;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.template-search-panel {
+  width: min(100%, 880px);
+  margin: 22px auto 0;
+  display: grid;
+  gap: 12px;
+}
+
+.template-search-input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.96rem;
+  padding: 0 16px;
+  outline: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.template-search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.template-style-filters {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.style-filter {
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 750;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.style-filter:hover,
+.style-filter.active {
+  border-color: var(--primary);
+  background: var(--surface-blue);
+  color: var(--primary-hover);
+}
+
+
+.template-admin-tools {
+  margin: 18px auto 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.template-admin-tools button {
+  min-height: 40px;
+  border: 1px solid var(--primary-soft);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--primary-hover);
+  font: inherit;
+  font-weight: 750;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.template-admin-tools button:hover:not(:disabled) {
+  background: var(--surface-blue);
+}
+
+.template-admin-tools button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sync-ok,
+.sync-error {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.sync-ok {
+  color: #047857;
+}
+
+.sync-error {
+  color: #be123c;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .templates-page {
+    padding: 24px 16px;
+  }
+
+  .templates-header {
+    margin-bottom: 32px;
+  }
+
+  .templates-header h1 {
+    font-size: 1.95rem;
+    margin-bottom: 8px;
+  }
+
+  .templates-subtitle {
+    font-size: 14px;
+  }
+
+  .template-search-panel {
+    margin-top: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .templates-page {
+    padding: 16px 12px;
+  }
+
+  .templates-header h1 {
+    font-size: 1.65rem;
+  }
+
+  .templates-subtitle {
+    font-size: 13px;
+  }
+
+  .template-search-input {
+    min-height: 42px;
+    font-size: 0.9rem;
+  }
+
+  .style-filter {
+    min-height: 34px;
+    padding: 0 11px;
+  }
+
+  .template-admin-tools button,
+  .template-admin-tools span {
+    width: 100%;
+  }
+}

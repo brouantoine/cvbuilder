@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 210mm; min-height: 297mm; font-family: "Helvetica Neue", Arial, sans-serif; color: #2f3133; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #ffffff; }
+
+    .page { position: relative; width: 210mm; min-height: 297mm; display: grid; grid-template-columns: 74mm 136mm; background: #ffffff; }
+
+    /* ---------- Colonne latérale sombre ---------- */
+    /* min-height: la colonne sombre remplit TOUJOURS la page entière (plus de
+       bande blanche en bas), et s'étire si le CV passe sur 2 pages. */
+    .side { background: {{ palette.dark }}; color: #ffffff; padding: 0 8mm 8mm; min-height: 297mm; }
+    .side-top { background: {{ palette.dark }}; padding-top: 9mm; text-align: center; }
+    .avatar { width: 42mm; height: 42mm; border-radius: 50%; object-fit: cover; border: 1.4mm solid #ffffff; display: block; margin: 0 auto; box-shadow: 0 0 0 .7mm {{ palette.dark }}; }
+    .avatar-fallback { width: 42mm; height: 42mm; border-radius: 50%; border: 1.4mm solid #ffffff; display: grid; place-items: center; margin: 0 auto; background: {{ palette.accent }}; font-size: 21pt; font-weight: 800; color: #ffffff; }
+    .side-name { margin: 4mm 0 0; font-size: 15.5pt; font-weight: 800; line-height: 1.12; text-transform: uppercase; letter-spacing: .3pt; }
+
+    .side h2 { margin: 5mm 0 2.6mm; font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: .6pt; text-align: center; position: relative; padding-bottom: 2mm; }
+    .side h2::after { content: ""; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 16mm; height: .7mm; background: {{ palette.accent }}; }
+
+    .identity { list-style: none; margin: 0; padding: 0; }
+    .identity li { display: flex; gap: 2.4mm; align-items: center; font-size: 9pt; line-height: 1.3; margin-bottom: 1.8mm; color: #e7e9ec; }
+    .identity .ico { flex: 0 0 4.2mm; color: {{ palette.accent }}; display: inline-flex; align-items: center; }
+    .identity .ico svg { width: 3.7mm; height: 3.7mm; display: block; }
+    .identity .ico-dot { flex: 0 0 4.2mm; display: inline-flex; justify-content: center; align-items: center; }
+    .identity .ico-dot::before { content: ""; width: 1.6mm; height: 1.6mm; border-radius: 50%; background: {{ palette.accent }}; }
+    .identity .val { overflow-wrap: anywhere; }
+
+    .side-skills { list-style: none; margin: 0; padding: 0; }
+    .side-skills li { font-size: 9pt; line-height: 1.3; color: #e7e9ec; margin-bottom: 1.3mm; padding-left: 4mm; position: relative; }
+    .side-skills li::before { content: "\203A"; position: absolute; left: 0; color: {{ palette.accent }}; font-weight: 800; }
+
+    .atout-block { margin-bottom: 4mm; }
+    .atout-block h3 { margin: 0 0 2mm; font-size: 9pt; font-weight: 800; text-transform: uppercase; letter-spacing: .4pt; color: #ffffff; }
+    .rated { margin-bottom: 2mm; }
+    .rated .lbl { font-size: 9pt; color: #e7e9ec; margin-bottom: 1mm; }
+    .bar { height: 2.6mm; border-radius: 1.4mm; background: rgba(255,255,255,.16); overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: {{ palette.accent }}; border-radius: 1.4mm; }
+
+    .bullets { list-style: none; margin: 0; padding: 0; }
+    .bullets li { font-size: 9pt; line-height: 1.3; color: #e7e9ec; margin-bottom: 1.1mm; padding-left: 4mm; position: relative; }
+    .bullets li::before { content: "–"; position: absolute; left: 0; color: {{ palette.accent }}; font-weight: 800; }
+
+    .hobbies { display: flex; flex-wrap: wrap; gap: 2mm 3mm; }
+    .hobbies span { font-size: 9pt; color: #e7e9ec; background: rgba(255,255,255,.1); border-radius: 6mm; padding: 1.2mm 3mm; }
+
+    /* ---------- Colonne principale ---------- */
+    .main { padding: 10mm 11mm 8mm; }
+    .headline { margin: 0; font-size: 22pt; font-weight: 800; text-transform: uppercase; letter-spacing: .2pt; color: {{ palette.accent }}; line-height: 1.06; overflow-wrap: normal; word-break: keep-all; hyphens: none; }
+    .headline.title-long { font-size: 18pt; }
+    .headline.title-xlong { font-size: 15pt; }
+    .headline-extra { font-size: 12pt; font-weight: 700; text-transform: none; letter-spacing: 0; color: #2f3133; white-space: nowrap; }
+    .tagline { margin: 2mm 0 0; font-size: 10.5pt; color: {{ palette.muted }}; }
+
+    .sec { margin-top: 4.5mm; }
+    .sec > h2 { margin: 0 0 2.4mm; font-size: 13pt; font-weight: 800; text-transform: uppercase; letter-spacing: .5pt; color: {{ palette.accent }}; border-bottom: .5mm solid #d8dadd; padding-bottom: 1.4mm; }
+    .profile-text { margin: 0; font-size: 10pt; line-height: 1.4; color: #404347; }
+
+    .timeline { position: relative; padding-left: 6mm; }
+    .timeline::before { content: ""; position: absolute; left: 1.4mm; top: 1.5mm; bottom: 1.5mm; width: .45mm; background: #d8dadd; }
+    .tl-item { position: relative; margin-bottom: 3mm; break-inside: avoid; }
+    .tl-item::before { content: ""; position: absolute; left: -6mm; top: 1mm; width: 2.8mm; height: 2.8mm; border-radius: 50%; background: {{ palette.accent }}; box-shadow: 0 0 0 1mm #ffffff; }
+    .tl-date { font-size: 9.5pt; font-weight: 800; color: #2f3133; }
+    .tl-title { font-size: 11pt; font-weight: 800; color: #2f3133; margin: .5mm 0 0; text-transform: uppercase; letter-spacing: .2pt; }
+    .tl-org { font-size: 10pt; font-weight: 700; color: {{ palette.accent }}; margin: .3mm 0 0; }
+    .tl-bullets { list-style: none; margin: 1.1mm 0 0; padding: 0; }
+    .tl-bullets li { font-size: 10pt; line-height: 1.34; color: #404347; padding-left: 3.4mm; position: relative; margin-bottom: .5mm; }
+    .tl-bullets li::before { content: "-"; position: absolute; left: 0; color: {{ palette.muted }}; }
+
+    .skills-list { list-style: none; margin: 0; padding: 0; columns: 1; }
+    .skills-list li { font-size: 10pt; line-height: 1.4; color: #404347; padding-left: 5mm; position: relative; margin-bottom: .8mm; }
+    .skills-list li::before { content: "\203A"; position: absolute; left: 0; color: {{ palette.accent }}; font-weight: 800; font-size: 11pt; line-height: 1; top: .2mm; }
+
+    /* ---------- Densité adaptative : on RESSERRE FLUIDEMENT les espaces, jamais le texte sous 10pt ---------- */
+    .page.fit-1 .main { padding: 9mm 10mm 7mm; }
+    .page.fit-1 .sec { margin-top: 3.8mm; }
+    .page.fit-1 .tl-item { margin-bottom: 2.6mm; }
+    .page.fit-1 .profile-text, .page.fit-1 .tl-bullets li, .page.fit-1 .skills-list li { line-height: 1.32; }
+    .page.fit-1 .side-top { padding-top: 7mm; }
+    .page.fit-1 .side h2 { margin-top: 4mm; }
+
+    .page.fit-2 .main { padding: 8mm 10mm 6mm; }
+    .page.fit-2 .sec { margin-top: 3mm; }
+    .page.fit-2 .sec > h2 { margin-bottom: 2mm; padding-bottom: 1.1mm; }
+    .page.fit-2 .tl-item { margin-bottom: 2.2mm; }
+    .page.fit-2 .tl-bullets { margin-top: .8mm; }
+    .page.fit-2 .profile-text, .page.fit-2 .tl-bullets li, .page.fit-2 .skills-list li { line-height: 1.28; }
+    .page.fit-2 .skills-list li { margin-bottom: .5mm; }
+    .page.fit-2 .side-top { padding-top: 6mm; }
+    .page.fit-2 .side h2 { margin-top: 3.5mm; margin-bottom: 2mm; }
+    .page.fit-2 .atout-block { margin-bottom: 3mm; }
+    .page.fit-2 .identity li { margin-bottom: 1.4mm; }
+
+    .page.fit-3 .main { padding: 7mm 9mm 5mm; }
+    .page.fit-3 .sec { margin-top: 2.4mm; }
+    .page.fit-3 .sec > h2 { margin-bottom: 1.6mm; padding-bottom: 1mm; font-size: 12pt; }
+    .page.fit-3 .tl-item { margin-bottom: 1.8mm; }
+    .page.fit-3 .tl-bullets { margin-top: .6mm; }
+    .page.fit-3 .tl-title { font-size: 10.5pt; }
+    .page.fit-3 .profile-text, .page.fit-3 .tl-bullets li, .page.fit-3 .skills-list li { line-height: 1.24; }
+    .page.fit-3 .skills-list li, .page.fit-3 .tl-bullets li { margin-bottom: .4mm; }
+    .page.fit-3 .side-top { padding-top: 5mm; }
+    .page.fit-3 .side h2 { margin-top: 3mm; margin-bottom: 1.8mm; }
+    .page.fit-3 .atout-block { margin-bottom: 2.4mm; }
+    .page.fit-3 .identity li { margin-bottom: 1.2mm; }
+    .page.fit-3 .rated { margin-bottom: 1.5mm; }
+
+    /* fit-4/5/6 : compression profonde — on réduit AUSSI la police pour que TOUTES
+       les informations tiennent sur une page (jamais de contenu supprimé). */
+    .page.fit-4 .main { padding: 6mm 8mm 4mm; }
+    .page.fit-4 .sec { margin-top: 2mm; }
+    .page.fit-4 .sec > h2 { font-size: 11.5pt; margin-bottom: 1.3mm; padding-bottom: .9mm; }
+    .page.fit-4 .headline { font-size: 20pt; }
+    .page.fit-4 .tl-item { margin-bottom: 1.5mm; }
+    .page.fit-4 .tl-title { font-size: 10pt; }
+    .page.fit-4 .tl-date { font-size: 9pt; }
+    .page.fit-4 .tl-org { font-size: 9.3pt; }
+    .page.fit-4 .profile-text, .page.fit-4 .tl-bullets li, .page.fit-4 .skills-list li { font-size: 9.4pt; line-height: 1.24; margin-bottom: .3mm; }
+    .page.fit-4 .side-top { padding-top: 4mm; }
+    .page.fit-4 .side h2 { margin-top: 2.6mm; margin-bottom: 1.5mm; font-size: 10.5pt; }
+    .page.fit-4 .atout-block { margin-bottom: 2mm; }
+    .page.fit-4 .identity li, .page.fit-4 .rated { margin-bottom: 1mm; }
+    .page.fit-4 .side-skills li, .page.fit-4 .bullets li, .page.fit-4 .identity li { font-size: 8.6pt; }
+
+    .page.fit-5 .main { padding: 5mm 8mm 4mm; }
+    .page.fit-5 .sec { margin-top: 1.7mm; }
+    .page.fit-5 .sec > h2 { font-size: 11pt; margin-bottom: 1.1mm; padding-bottom: .8mm; }
+    .page.fit-5 .headline { font-size: 18pt; }
+    .page.fit-5 .tl-item { margin-bottom: 1.2mm; }
+    .page.fit-5 .tl-title { font-size: 9.6pt; }
+    .page.fit-5 .tl-date { font-size: 8.6pt; }
+    .page.fit-5 .tl-org { font-size: 9pt; }
+    .page.fit-5 .profile-text, .page.fit-5 .tl-bullets li, .page.fit-5 .skills-list li { font-size: 9pt; line-height: 1.2; margin-bottom: .2mm; }
+    .page.fit-5 .avatar, .page.fit-5 .avatar-fallback { width: 38mm; height: 38mm; }
+    .page.fit-5 .side-top { padding-top: 3.5mm; }
+    .page.fit-5 .side h2 { margin-top: 2.2mm; margin-bottom: 1.3mm; font-size: 10pt; }
+    .page.fit-5 .atout-block { margin-bottom: 1.6mm; }
+    .page.fit-5 .identity li, .page.fit-5 .rated { margin-bottom: .8mm; }
+    .page.fit-5 .side-skills li, .page.fit-5 .bullets li, .page.fit-5 .identity li, .page.fit-5 .rated .lbl { font-size: 8.3pt; }
+    .page.fit-5 .side-name { font-size: 14pt; }
+
+    .page.fit-6 .main { padding: 4mm 7mm 3mm; }
+    .page.fit-6 .sec { margin-top: 1.3mm; }
+    .page.fit-6 .sec > h2 { font-size: 10.5pt; margin-bottom: .9mm; padding-bottom: .7mm; }
+    .page.fit-6 .headline { font-size: 17pt; }
+    .page.fit-6 .tl-item { margin-bottom: 1mm; }
+    .page.fit-6 .tl-title { font-size: 9.2pt; }
+    .page.fit-6 .tl-date { font-size: 8.3pt; }
+    .page.fit-6 .tl-org { font-size: 8.6pt; }
+    .page.fit-6 .profile-text, .page.fit-6 .tl-bullets li, .page.fit-6 .skills-list li { font-size: 8.6pt; line-height: 1.16; margin-bottom: .15mm; }
+    .page.fit-6 .avatar, .page.fit-6 .avatar-fallback { width: 34mm; height: 34mm; }
+    .page.fit-6 .side-top { padding-top: 3mm; }
+    .page.fit-6 .side h2 { margin-top: 1.8mm; margin-bottom: 1.1mm; font-size: 9.5pt; }
+    .page.fit-6 .atout-block { margin-bottom: 1.3mm; }
+    .page.fit-6 .identity li, .page.fit-6 .rated { margin-bottom: .6mm; }
+    .page.fit-6 .side-skills li, .page.fit-6 .bullets li, .page.fit-6 .identity li, .page.fit-6 .rated .lbl { font-size: 8pt; }
+    .page.fit-6 .side-name { font-size: 13pt; }
+    .page.fit-6 .bar { height: 2mm; }
+  </style>
+</head>
+<body>
+  <section class="page {{ cv.fit_class }}">
+    <aside class="side">
+      <div class="side-top">
+        {% if cv.photo_uri %}<img class="avatar" src="{{ cv.photo_uri }}" alt="">{% else %}<div class="avatar-fallback">{{ cv.initials }}</div>{% endif %}
+        <p class="side-name">{{ cv.full_name }}</p>
+      </div>
+
+      {% if cv.identity_lines or cv.contact_items %}
+      <h2>Identité</h2>
+      <ul class="identity">
+        {% for line in cv.identity_lines %}<li><span class="ico-dot"></span><span class="val">{{ line }}</span></li>{% endfor %}
+        {% for item in cv.contact_items %}<li><span class="ico">{{ item.icon|safe }}</span><span class="val">{{ item.value }}</span></li>{% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if cv.language_ratings or cv.skill_ratings or cv.aptitudes %}
+      <h2>Atouts</h2>
+      {% if cv.language_ratings %}
+      <div class="atout-block">
+        <h3>Langues</h3>
+        {% for lang in cv.language_ratings %}
+        <div class="rated"><div class="lbl">{{ lang.label }}{% if lang.level %} · {{ lang.level }}{% endif %}</div><div class="bar"><span style="width: {{ lang.percent }}%"></span></div></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if cv.skill_ratings %}
+      <div class="atout-block">
+        <h3>Informatiques</h3>
+        {% for skill in cv.skill_ratings %}
+        <div class="rated"><div class="lbl">{{ skill.label }}</div><div class="bar"><span style="width: {{ skill.percent }}%"></span></div></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if cv.aptitudes %}
+      <div class="atout-block">
+        <h3>Aptitudes</h3>
+        <ul class="bullets">{% for item in cv.aptitudes %}<li>{{ item }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+      {% endif %}
+
+      {% if cv.moved_section and cv.moved_items %}
+      <h2>{{ cv.moved_title }}</h2>
+      <ul class="side-skills">{% for item in cv.moved_items %}<li>{{ item }}</li>{% endfor %}</ul>
+      {% endif %}
+
+      {% if cv.hobbies %}
+      <h2>Hobbies</h2>
+      <div class="hobbies">{% for hobby in cv.hobbies %}<span>{{ hobby }}</span>{% endfor %}</div>
+      {% endif %}
+    </aside>
+
+    <main class="main">
+      <h1 class="headline {{ cv.title_size_class }}">{{ cv.job_title_main|default:cv.full_name }}{% if cv.job_title_extra %} <span class="headline-extra">{{ cv.job_title_extra }}</span>{% endif %}</h1>
+      {% if cv.tagline %}<p class="tagline">{{ cv.tagline }}</p>{% endif %}
+
+      {% if cv.profile %}
+      <section class="sec">
+        <h2>Profil</h2>
+        <p class="profile-text">{{ cv.profile }}</p>
+      </section>
+      {% endif %}
+
+      {% if cv.experiences %}
+      <section class="sec">
+        <h2>Expériences professionnelles</h2>
+        <div class="timeline">
+          {% for exp in cv.experiences %}
+          <div class="tl-item">
+            {% if exp.period %}<div class="tl-date">{{ exp.period }}</div>{% endif %}
+            <p class="tl-title">{{ exp.title }}</p>
+            {% if exp.company %}<p class="tl-org">{{ exp.company }}</p>{% endif %}
+            {% if exp.missions %}<ul class="tl-bullets">{% for mission in exp.missions %}<li>{{ mission }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if cv.education %}
+      <section class="sec">
+        <h2>Formations &amp; diplômes</h2>
+        <div class="timeline">
+          {% for edu in cv.education %}
+          <div class="tl-item">
+            {% if edu.period %}<div class="tl-date">{{ edu.period }}</div>{% endif %}
+            <p class="tl-title">{{ edu.degree }}</p>
+            {% if edu.institution %}<p class="tl-org">{{ edu.institution }}</p>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if cv.projects and cv.moved_section != 'projects' %}
+      <section class="sec">
+        <h2>Projets réalisés</h2>
+        <ul class="skills-list">{% for project in cv.projects %}<li>{{ project }}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+
+      {% if cv.skills and cv.moved_section != 'skills' %}
+      <section class="sec">
+        <h2>Compétences</h2>
+        <ul class="skills-list">{% for skill in cv.skills %}<li>{{ skill }}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+
+      {% if cv.certifications and cv.moved_section != 'certifications' %}
+      <section class="sec">
+        <h2>Certifications</h2>
+        <ul class="skills-list">{% for cert in cv.certifications %}<li>{{ cert }}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+    </main>
+  </section>
+</body>
+</html>

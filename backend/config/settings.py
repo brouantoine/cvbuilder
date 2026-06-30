@@ -10,28 +10,34 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
+from datetime import timedelta
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s9w6iv3^$qdp2*wdyg=im21c+-+vrbmhxp!o36$kj5%kv5!q#j'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-s9w6iv3^$qdp2*wdyg=im21c+-+vrbmhxp!o36$kj5%kv5!q#j')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'true').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',') if host.strip()]
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    "corsheaders",
+    "django.contrib.admin",
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -39,11 +45,15 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'users',
+    'templates',
+    'cvs',
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -116,8 +126,20 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
+
+# CORS : autoriser le frontend React (Vite par défaut sur 5173)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:5180",
+    "http://127.0.0.1:5180",
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -127,3 +149,54 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
 }
+
+# JWT : sessions longue durée. L'utilisateur reste connecté tant qu'il ne se
+# déconnecte pas lui-même. Le token d'accès dure longtemps, et le refresh
+# (avec rotation) prolonge la session à chaque utilisation.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_ACCESS_DAYS", "30"))),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_DAYS", "365"))),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": False,
+}
+
+
+# IA CV
+AI_PROVIDER = os.getenv("AI_PROVIDER", "groq").lower()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+# Quota tokens/minute du palier Groq (gratuit = 8000). On garde une marge.
+# Relever cette valeur après passage au palier Dev de Groq.
+GROQ_TPM_LIMIT = int(os.getenv("GROQ_TPM_LIMIT", "7600"))
+
+OPENAI_REQUEST_TIMEOUT = int(os.getenv("OPENAI_REQUEST_TIMEOUT", "60"))
+CV_OCR_LANGUAGES = os.getenv("CV_OCR_LANGUAGES", "fra+eng")
+CV_OCR_MAX_PAGES = int(os.getenv("CV_OCR_MAX_PAGES", "6"))
+CV_OCR_DPI = int(os.getenv("CV_OCR_DPI", "180"))
+
+# Paystack
+PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
+PAYSTACK_PUBLIC_KEY = os.getenv("PAYSTACK_PUBLIC_KEY", "")
+PAYSTACK_CURRENCY = os.getenv("PAYSTACK_CURRENCY", "XOF")
+PAYSTACK_CALLBACK_URL = os.getenv("PAYSTACK_CALLBACK_URL", "http://localhost:5173/dashboard")
+PAYSTACK_SUBUNIT_MULTIPLIER = int(os.getenv("PAYSTACK_SUBUNIT_MULTIPLIER", "1"))
+PAYMENTS_ENFORCED = os.getenv("PAYMENTS_ENFORCED", "false" if DEBUG else "true").lower() == "true"
+
+# Génération PDF
+LIBREOFFICE_BINARY = os.getenv("LIBREOFFICE_BINARY", "soffice")
+CV_HTML_RENDERER = os.getenv("CV_HTML_RENDERER", "auto").lower()
+CV_CHROMIUM_BINARY = os.getenv("CV_CHROMIUM_BINARY", "")
+CV_SINGLE_PRICE_XOF = int(os.getenv("CV_SINGLE_PRICE_XOF", "200"))
+CV_WEEKLY_PRICE_XOF = int(os.getenv("CV_WEEKLY_PRICE_XOF", "500"))
+CV_EXTRA_AI_PRICE_XOF = int(os.getenv("CV_EXTRA_AI_PRICE_XOF", "50"))
+CV_SINGLE_ACCESS_HOURS = int(os.getenv("CV_SINGLE_ACCESS_HOURS", "2"))
+CV_WEEKLY_ACCESS_HOURS = int(os.getenv("CV_WEEKLY_ACCESS_HOURS", "168"))
+CV_EXTRA_AI_CREDITS = int(os.getenv("CV_EXTRA_AI_CREDITS", "1"))
+
+# Dossier où déposer vos modèles Word personnalisés
+CV_TEMPLATE_LIBRARY_DIR = Path(os.getenv("CV_TEMPLATE_LIBRARY_DIR") or BASE_DIR / "cvs" / "docx_templates" / "examples")

@@ -1,0 +1,436 @@
+CVBuilder
+Guide d'onboarding — Développeur Junior
+Version 1.0  •  Projet fullstack Django + React
+Depot Git
+github.com/brouantoine/cvbuilder
+Stack technique
+Django DRF • React • PostgreSQL
+
+
+1. Présentation du projet
+
+1.1 C'est quoi CVBuilder ?
+CVBuilder est une plateforme web SaaS qui permet à tout le monde — étudiant, freelance, demandeur d'emploi — de créer son CV professionnel en quelques minutes, sans maîtriser Word ou Canva.
+
+L'utilisateur :
+    • Choisit un template Word parmi ceux proposés
+    • Remplit un formulaire en plusieurs étapes (infos perso, expériences, formation, compétences)
+    • Reçoit des suggestions d'amélioration en temps réel grâce à l'intelligence artificielle
+    • Génère et télécharge son CV au format PDF ou DOCX en un clic
+
+1.2 Pourquoi c'est utile ?
+En Côte d'Ivoire et dans toute l'Afrique francophone, beaucoup de jeunes n'ont pas accès à des outils professionnels de création de CV. CVBuilder comble ce manque avec une solution simple, accessible depuis un téléphone, et disponible en français.
+
+1.3 Modèle économique
+Plan
+Ce que ça inclut
+Plan Gratuit
+3 templates disponibles, génération PDF, compte utilisateur
+Plan Premium
+Tous les templates débloqués — 1$/mois renouvelable à la demande
+Paiement
+Wave CI et Orange Money — paiement mobile ultra-simple
+
+1.4 Les grandes fonctionnalités (MVP)
+    • Choix de template parmi plusieurs modèles Word
+    • Formulaire multi-étapes guidé
+    • Suggestions IA en temps réel à chaque champ
+    • Génération automatique DOCX + conversion PDF
+    • Système de compte utilisateur avec authentification JWT
+    • Paiement Wave CI / Orange Money pour débloquer le premium
+
+
+2. Stack technique — ce qu'on utilise et pourquoi
+
+Technologie
+Rôle dans le projet
+Django (Python)
+Framework backend robuste et rapide à développer. Gère les données, la logique métier, les utilisateurs.
+Django REST Framework
+Transforme Django en API REST. Le frontend React consomme cette API.
+React + Vite
+Interface utilisateur moderne, rapide, composants réutilisables.
+PostgreSQL
+Base de données relationnelle solide. On stocke tous les CV, utilisateurs, templates.
+Redis
+Cache rapide. Sert pour les sessions et les tâches asynchrones.
+Celery
+Exécute des tâches en arrière-plan : génération PDF, envoi d'emails.
+python-docx
+Remplit les templates Word avec les données du formulaire.
+Docker
+Isole l'environnement. Le projet tourne pareil sur toutes les machines.
+Git + GitHub
+Versionning du code. Collaboration entre toi et le lead.
+
+
+3. Installation de l'environnement de développement
+
+Avant de commencer
+Lis chaque etape dans l'ordre. Ne saute rien.
+Si une commande echoue, note l'erreur exacte et demande au lead.
+Toutes les commandes sont a taper dans le Terminal (ou PowerShell sur Windows).
+
+3.1 Git
+Git est l'outil qui permet de sauvegarder et partager le code.
+
+Verifier si Git est deja installe
+git --version
+Si tu vois un numero de version (ex: git version 2.40.0), Git est deja installe. Sinon :
+
+Installer Git
+    • Windows : telecharger sur https://git-scm.com/download/win et suivre l'installateur
+    • Mac : taper dans le terminal :  xcode-select --install
+    • Ubuntu/Debian :  sudo apt install git
+
+Configurer Git (a faire une seule fois)
+git config --global user.name "Ton Prenom Nom"
+git config --global user.email "ton@email.com"
+
+3.2 Python
+Le backend Django tourne sur Python. On a besoin de Python 3.11 ou plus recent.
+
+Verifier la version
+python --version
+ou
+python3 --version
+Il faut voir : Python 3.11.x ou 3.12.x
+
+Installer Python si necessaire
+    • Windows / Mac : telecharger sur https://www.python.org/downloads/
+    • Ubuntu : sudo apt install python3.11 python3.11-venv python3.11-pip
+
+Important pour Windows
+Lors de l'installation, cocher la case 'Add Python to PATH'.
+Sans ca, Python ne sera pas reconnu dans le terminal.
+
+3.3 Node.js
+Node.js est necessaire pour le frontend React.
+
+Verifier la version
+node --version
+Il faut voir : v18.x.x ou plus recent.
+
+Installer Node.js
+Telecharger la version LTS sur : https://nodejs.org
+Verifier aussi que npm est installe :
+npm --version
+
+3.4 Docker Desktop
+Docker permet de lancer PostgreSQL et Redis sans les installer manuellement. Tout tourne dans des conteneurs isoles.
+
+Installer Docker Desktop
+    • Windows et Mac : telecharger sur https://www.docker.com/products/docker-desktop
+    • Linux : suivre https://docs.docker.com/engine/install/ubuntu/
+
+Verifier l'installation
+docker --version
+docker compose version
+
+Pour Windows
+Docker necessite WSL2 (Windows Subsystem for Linux).
+Docker Desktop te propose de l'installer automatiquement au premier lancement.
+
+3.5 Visual Studio Code (editeur recommande)
+Telecharger sur : https://code.visualstudio.com
+
+Extensions a installer dans VS Code :
+    • Python (par Microsoft)
+    • Pylance
+    • ESLint
+    • Prettier - Code formatter
+    • Docker
+    • GitLens
+    • REST Client (pour tester les API)
+Pour installer une extension : cliquer sur l'icone Extensions dans la barre laterale (Ctrl+Shift+X), rechercher le nom, cliquer Installer.
+
+
+4. Recuperer le projet depuis GitHub
+
+Le depot Git du projet est heberge a l'adresse :
+
+https://github.com/brouantoine/cvbuilder.git
+
+4.1 Cloner le depot
+Ouvre ton terminal, place-toi dans le dossier ou tu veux mettre le projet, puis tape :
+git clone https://github.com/brouantoine/cvbuilder.git
+cd cvbuilder
+
+4.2 Structure du depot
+Une fois clone, tu verras deux grands dossiers :
+Fichier / Dossier
+Role
+backend/
+Tout le code Python / Django. C'est l'API.
+frontend/
+Tout le code React. C'est ce que l'utilisateur voit.
+docker-compose.yml
+Lance PostgreSQL + Redis en un clic.
+Makefile
+Raccourcis de commandes utiles (make dev, make migrate...)
+.env.example
+Modele des variables d'environnement a copier.
+
+
+5. Lancer le projet en local
+
+Ordre des operations
+1. Lancer les services Docker (PostgreSQL + Redis)
+2. Configurer et lancer le backend Django
+3. Configurer et lancer le frontend React
+
+5.1 Lancer PostgreSQL et Redis avec Docker
+Dans le dossier racine du projet :
+docker compose up -d
+Cela demarre PostgreSQL (base de donnees) et Redis (cache) en arriere-plan.
+Pour verifier qu'ils tournent :
+docker compose ps
+Tu dois voir deux services avec le statut 'running'.
+
+5.2 Configurer le backend Django
+
+Creer l'environnement virtuel Python
+cd backend
+python -m venv venv
+
+Activer l'environnement virtuel
+    • Sur Mac / Linux :   source venv/bin/activate
+    • Sur Windows (PowerShell) :   .\venv\Scripts\Activate.ps1
+Tu dois voir (venv) apparaitre au debut de la ligne dans le terminal. C'est normal et c'est bien.
+
+Installer les dependances Python
+pip install -r requirements/dev.txt
+
+Configurer les variables d'environnement
+cp ../.env.example .env
+Ouvre le fichier .env dans VS Code et remplis les valeurs indiquees. Le lead te donnera les valeurs necessaires.
+
+Creer la base de donnees et les tables
+python manage.py migrate
+
+Creer un compte administrateur
+python manage.py createsuperuser
+Suis les instructions : entre un nom d'utilisateur, un email et un mot de passe.
+
+Lancer le serveur Django
+python manage.py runserver
+Le backend est maintenant accessible a :
+http://localhost:8000
+L'interface d'administration Django est disponible a :
+http://localhost:8000/admin
+
+5.3 Configurer le frontend React
+Ouvre un nouveau terminal (garde le backend ouvert dans l'autre).
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+Le frontend est maintenant accessible a :
+http://localhost:5173
+
+Tout est pret !
+Backend Django : http://localhost:8000
+Frontend React : http://localhost:5173
+Admin Django : http://localhost:8000/admin
+PostgreSQL : port 5432 (gere par Docker)
+Redis : port 6379 (gere par Docker)
+
+
+6. Workflow Git — comment on travaille ensemble
+
+On ne travaille JAMAIS directement sur la branche main. Chaque fonctionnalite ou correction se fait sur une branche separee.
+
+6.1 Branches du projet
+Branche
+Role
+main
+Code stable, en production. On ne pousse jamais directement dessus.
+develop
+Branche de developpement principale. On merge ici apres validation.
+feature/nom-feature
+Branche pour chaque nouvelle fonctionnalite.
+fix/nom-bug
+Branche pour corriger un bug.
+
+6.2 Creer et travailler sur une branche
+Se mettre sur develop et recuperer les derniers changements :
+git checkout develop
+git pull origin develop
+
+Creer ta branche de travail :
+git checkout -b feature/nom-de-ta-fonctionnalite
+
+Travailler, puis sauvegarder tes changements :
+git add .
+git commit -m "feat: description courte de ce que tu as fait"
+
+Envoyer ta branche sur GitHub :
+git push origin feature/nom-de-ta-fonctionnalite
+
+6.3 Convention des messages de commit
+Prefixe
+Quand l'utiliser
+feat: ...
+Nouvelle fonctionnalite
+fix: ...
+Correction de bug
+style: ...
+Mise en forme, CSS
+refactor: ...
+Restructuration du code sans changement de comportement
+docs: ...
+Documentation
+test: ...
+Ajout ou modification de tests
+
+Exemples corrects :
+    • git commit -m "feat: ajout du formulaire experience professionnelle"
+    • git commit -m "fix: correction erreur 404 sur /api/cv/"
+    • git commit -m "style: mise en forme du composant TemplateCard"
+
+6.4 Ouvrir une Pull Request
+Quand ta fonctionnalite est terminee :
+    1. Pousser ta branche sur GitHub (git push...)
+    2. Aller sur github.com/brouantoine/cvbuilder
+    3. Cliquer sur 'Compare & pull request'
+    4. Remplir le titre et la description de ce que tu as fait
+    5. Assigner le lead comme reviewer
+    6. Cliquer 'Create pull request'
+
+Important
+Ne pas merger ta Pull Request toi-meme.
+Attendre la validation et les commentaires du lead.
+Corriger ce qui est demande avant le merge.
+
+
+7. Architecture Django — les apps et leur role
+
+Le backend est organise en plusieurs apps Django independantes. Chaque app gere un domaine metier precis.
+
+App Django
+Ce qu'elle fait
+users
+Gestion des comptes : inscription, connexion, profil, abonnement premium.
+templates
+Les modeles de CV disponibles : nom, apercu image, niveau (gratuit/premium).
+cvs
+Coeur du projet : creation du CV, sections, experiences, competences, generation du fichier.
+ai_suggestions
+Connexion a l'API Claude pour suggerer des ameliorations en temps reel.
+payments
+Integration Wave CI et Orange Money. Gere les transactions et active le premium.
+
+7.1 Les endpoints API principaux
+Endpoint
+Action
+POST /api/auth/register/
+Creer un compte
+POST /api/auth/login/
+Se connecter, recevoir un token JWT
+GET /api/templates/
+Lister tous les templates
+POST /api/cvs/
+Creer un nouveau CV
+GET /api/cvs/{id}/
+Recuperer un CV existant
+POST /api/cvs/{id}/generate/
+Lancer la generation DOCX + PDF
+GET /api/cvs/{id}/download/
+Telecharger le fichier genere
+POST /api/ai/suggest/
+Recevoir une suggestion IA pour un champ
+POST /api/payments/initiate/
+Demarrer un paiement Wave ou OM
+POST /api/payments/webhook/
+Callback de confirmation du paiement
+
+
+8. Repartition du travail
+
+Le projet est divise entre le lead (responsable de l'architecture et des parties critiques) et toi (les fonctionnalites CRUD et les composants UI).
+
+Junior (toi)
+En parallele avec le lead
+App users : modeles, serializers, vues
+CRUD de base, formulaires React
+App templates : liste, details
+Composants TemplateCard et TemplateGrid
+Formulaire multi-etapes React (Builder.jsx)
+StepIndicator, chaque etape du formulaire
+Page Dashboard (mes CV enregistres)
+Composants UI de base (Button, Input, Modal)
+Tests des endpoints avec REST Client
+Store Zustand (cvStore, authStore)
+Pages Login et Register
+Hooks useAuth et useCVBuilder
+
+Parties gerees par le lead
+generator.py et tasks.py : generation des fichiers DOCX et PDF
+ai_suggestions/ : connexion a l'API Claude pour les suggestions IA
+payments/ : integration Wave CI et Orange Money
+Docker, CI/CD, deploiement sur Railway/Render
+Code review de toutes tes Pull Requests
+
+
+9. Commandes utiles au quotidien
+
+9.1 Backend Django
+Commande
+Action
+python manage.py runserver
+Lancer le serveur de dev
+python manage.py migrate
+Appliquer les migrations de base de donnees
+python manage.py makemigrations
+Creer de nouvelles migrations apres modification d'un modele
+python manage.py createsuperuser
+Creer un admin
+python manage.py shell
+Ouvrir un shell Python interactif avec le contexte Django
+
+9.2 Frontend React
+Commande
+Action
+npm run dev
+Lancer le serveur de developpement
+npm run build
+Construire la version de production
+npm run lint
+Verifier le code avec ESLint
+
+9.3 Docker
+Commande
+Action
+docker compose up -d
+Demarrer PostgreSQL et Redis en arriere-plan
+docker compose down
+Arreter les services
+docker compose ps
+Voir l'etat des services
+docker compose logs -f
+Voir les logs en temps reel
+
+
+10. Ressources pour progresser
+
+Backend Django
+    • Documentation officielle Django : https://docs.djangoproject.com
+    • Django REST Framework : https://www.django-rest-framework.org
+    • Tutoriel DRF en francais : chercher 'Django REST Framework tutorial' sur YouTube
+
+Frontend React
+    • Documentation React : https://react.dev
+    • Vite : https://vitejs.dev
+    • Zustand (gestionnaire d'etat) : https://zustand-demo.pmnd.rs
+
+Git
+    • Guide debutant : https://rogerdudler.github.io/git-guide/index.fr.html
+    • Visualiser Git : https://learngitbranching.js.org
+
+Python
+    • python-docx (generation Word) : https://python-docx.readthedocs.io
+    • Celery (taches asynchrones) : https://docs.celeryq.dev
+
+
+CVBuilder — Document interne confidentiel
+Depot : github.com/brouantoine/cvbuilder  |  Stack : Django + React + PostgreSQL

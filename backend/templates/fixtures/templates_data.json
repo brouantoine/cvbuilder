@@ -1,0 +1,92 @@
+[
+  {
+    "model": "templates.cvtemplate",
+    "pk": 1,
+    "fields": {
+      "name": "Classique Élégant",
+      "slug": "classique-elegant",
+      "description": "Un design intemporel et professionnel",
+      "long_description": "Parfait pour les candidatures traditionnelles. Clair, lisible et apprécié des recruteurs. Design minimaliste avec typographie professionnelle.",
+      "category": "classic",
+      "preview_image_url": "",
+      "docx_filename": "modele_simple.docx",
+      "is_premium": false,
+      "is_active": true,
+      "order": 1,
+      "created_at": "2026-03-16T23:47:00Z",
+      "updated_at": "2026-03-16T23:47:00Z"
+    }
+  },
+  {
+    "model": "templates.cvtemplate",
+    "pk": 2,
+    "fields": {
+      "name": "Moderne Dynamique",
+      "slug": "moderne-dynamique",
+      "description": "Design contemporain avec accents couleur",
+      "long_description": "Pour les métiers créatifs et tech. Mise en page moderne avec touches de couleur pour attirer l'attention. Très actuel et dynamique.",
+      "category": "modern",
+      "preview_image_url": "",
+      "docx_filename": "",
+      "is_premium": true,
+      "is_active": true,
+      "order": 2,
+      "created_at": "2026-03-16T23:47:00Z",
+      "updated_at": "2026-03-16T23:47:00Z"
+    }
+  },
+  {
+    "model": "templates.cvtemplate",
+    "pk": 3,
+    "fields": {
+      "name": "Minimaliste Épuré",
+      "slug": "minimaliste-epure",
+      "description": "Simplicité extrême, impact maximal",
+      "long_description": "Moins c'est plus. Ce CV épuré met l'accent sur votre contenu. Idéal pour les candidats avec une forte expérience et qui veulent dire plus avec moins.",
+      "category": "minimal",
+      "preview_image_url": "",
+      "docx_filename": "",
+      "is_premium": false,
+      "is_active": true,
+      "order": 3,
+      "created_at": "2026-03-16T23:47:00Z",
+      "updated_at": "2026-03-16T23:47:00Z"
+    }
+  },
+  {
+    "model": "templates.cvtemplate",
+    "pk": 4,
+    "fields": {
+      "name": "Créatif Moderne",
+      "slug": "creatif-moderne",
+      "description": "Pour les esprits créatifs",
+      "long_description": "Design unique avec mise en page asymétrique. Parfait pour les designers, artistes et créatifs. Laissez votre portfolio briller!",
+      "category": "creative",
+      "preview_image_url": "",
+      "docx_filename": "",
+      "is_premium": true,
+      "is_active": false,
+      "order": 4,
+      "created_at": "2026-03-16T23:47:00Z",
+      "updated_at": "2026-03-16T23:47:00Z"
+    }
+  },
+  {
+    "model": "templates.cvtemplate",
+    "pk": 5,
+    "fields": {
+      "name": "Coloré Vibrant",
+      "slug": "colore-vibrant",
+      "description": "Plein de vie et d'énergie",
+      "long_description": "Palette colorée et joyeuse. Parfait pour les candidatures où vous voulez montrer votre personnalité et votre dynamisme.",
+      "category": "colorful",
+      "preview_image_url": "",
+      "docx_filename": "",
+      "is_premium": true,
+      "is_active": false,
+      "order": 5,
+      "created_at": "2026-03-16T23:47:00Z",
+      "updated_at": "2026-03-16T23:47:00Z"
+    }
+  }
+]

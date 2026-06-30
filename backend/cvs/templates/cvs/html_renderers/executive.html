@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 210mm; min-height: 297mm; font-family: Arial, Helvetica, sans-serif; color: #111827; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #ffffff; }
+    .page { width: 210mm; height: 297mm; overflow: hidden; background: #ffffff; padding: 13mm 15mm 12mm; display: flex; flex-direction: column; }
+    .header { text-align: center; padding-bottom: 8mm; border-bottom: .45mm solid #cbd5e1; }
+    .photo { width: 31mm; height: 31mm; border-radius: 50%; object-fit: cover; border: .9mm solid {{ palette.accent }}; display: block; margin: 0 auto 4mm; }
+    .initials { width: 31mm; height: 31mm; border-radius: 50%; display: grid; place-items: center; background: {{ palette.accent }}; color: #ffffff; font-size: 16pt; font-weight: 800; margin: 0 auto 4mm; }
+    .name { margin: 0; font-size: 23pt; line-height: 1.05; font-weight: 800; letter-spacing: 0; color: #111827; }
+    .role { margin: 2mm 0 0; font-size: 10pt; color: {{ palette.accent }}; text-transform: uppercase; font-weight: 800; }
+    .contact { margin-top: 3.5mm; display: flex; flex-wrap: wrap; justify-content: center; gap: 1.8mm; color: #475569; }
+    .contact-item { display: inline-flex; align-items: baseline; gap: 1.2mm; padding: 1.1mm 1.7mm; border: .25mm solid #cbd5e1; border-radius: 1.4mm; background: #ffffff; max-width: 62mm; }
+    .contact-label { font-size: 6.4pt; text-transform: uppercase; color: {{ palette.accent }}; font-weight: 800; }
+    .contact-value { font-size: 7.3pt; overflow-wrap: anywhere; }
+    .summary { margin: 7mm auto 0; max-width: 168mm; color: #334155; font-size: 9pt; line-height: 1.42; }
+    .body { flex: 1; min-height: 132mm; display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; padding-top: 8mm; }
+    h2 { margin: 0 0 3mm; font-size: 9.3pt; color: {{ palette.accent }}; text-transform: uppercase; letter-spacing: 0; text-align: left; }
+    p { margin: 0; font-size: 8.6pt; line-height: 1.38; color: #334155; }
+    .section { margin-bottom: 4.8mm; break-inside: avoid; }
+    .item { margin-bottom: 3.3mm; break-inside: avoid; }
+    .item-title { margin: 0; font-size: 9.8pt; font-weight: 800; color: #111827; }
+    .meta { margin: .6mm 0 1.3mm; font-size: 7.6pt; color: {{ palette.muted }}; font-weight: 700; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    .bullets { list-style: disc; padding-left: 5mm; }
+    li { font-size: 8.1pt; line-height: 1.31; margin-bottom: 1.25mm; color: #334155; }
+    .skills { display: grid; grid-template-columns: 1fr 1fr; gap: 1.8mm; }
+    .skills li { margin: 0; padding: 1.8mm 2.2mm; border: .25mm solid #cbd5e1; background: {{ palette.soft }}; border-radius: 1.5mm; font-weight: 800; color: #111827; }
+    .bottom { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; }
+    .panel { min-height: 28mm; background: {{ palette.soft }}; border: .25mm solid #cbd5e1; border-radius: 2.5mm; padding: 4mm; }
+    .panel h2 { font-size: 8.3pt; margin-bottom: 2mm; }
+    .panel li, .panel p { font-size: 7.7pt; }
+    .page.fit-1 p, .page.fit-1 li { font-size: 7.6pt; line-height: 1.22; }
+    .page.fit-1 .section { margin-bottom: 3.5mm; }
+    .page.fit-1 .item { margin-bottom: 2.6mm; }
+    .page.fit-2 { padding-top: 10mm; padding-bottom: 9mm; }
+    .page.fit-2 p, .page.fit-2 li { font-size: 7pt; line-height: 1.16; }
+    .page.fit-2 .summary { margin-top: 5mm; font-size: 7.5pt; }
+    .page.fit-2 .body { gap: 6mm; padding-top: 6mm; }
+  </style>
+</head>
+<body>
+  <section class="page {{ cv.fit_class }}">
+    <header class="header">
+      {% if cv.photo_uri %}<img class="photo" src="{{ cv.photo_uri }}" alt="">{% else %}<div class="initials">{{ cv.initials }}</div>{% endif %}
+      <h1 class="name">{{ cv.full_name }}</h1>
+      {% if cv.job_title %}
+      <p class="role">{{ cv.job_title }}</p>
+      {% endif %}
+      {% if cv.contact_items %}
+      <div class="contact">{% for item in cv.contact_items %}<span class="contact-item"><strong class="contact-label">{{ item.label }}</strong><span class="contact-value">{{ item.value }}</span></span>{% endfor %}</div>
+      {% endif %}
+      {% if cv.profile %}
+      <p class="summary">{{ cv.profile }}</p>
+      {% endif %}
+    </header>
+    <div class="body">
+      <main>
+        {% if cv.experiences %}
+        <section class="section">
+          <h2>Experiences professionnelles</h2>
+          {% for exp in cv.experiences %}
+            <article class="item">
+              <h3 class="item-title">{{ exp.title }}</h3>
+              <p class="meta">{{ exp.meta }}</p>
+              <ul class="bullets">{% for mission in exp.missions|slice:":3" %}<li>{{ mission }}</li>{% endfor %}</ul>
+            </article>
+          {% endfor %}
+        </section>
+        {% endif %}
+        {% if cv.projects %}
+        <section class="section">
+          <h2>Projets</h2>
+          <ul class="bullets">{% for item in cv.projects %}<li>{{ item }}</li>{% endfor %}</ul>
+        </section>
+        {% endif %}
+      </main>
+      <aside>
+        {% if cv.education %}
+        <section class="section">
+          <h2>Formation</h2>
+          {% for edu in cv.education %}
+            <article class="item">
+              <h3 class="item-title">{{ edu.degree }}</h3>
+              <p class="meta">{{ edu.meta }}</p>
+            </article>
+          {% endfor %}
+        </section>
+        {% endif %}
+        {% if cv.skills %}
+        <section class="section">
+          <h2>Competences</h2>
+          <ul class="skills">{% for skill in cv.skills|slice:":8" %}<li>{{ skill }}</li>{% endfor %}</ul>
+        </section>
+        {% endif %}
+        {% if cv.languages %}
+        <section class="section">
+          <h2>Langues</h2>
+          <ul>{% for language in cv.languages %}<li>{{ language }}</li>{% endfor %}</ul>
+        </section>
+        {% endif %}
+        {% for section in cv.other_extra_sections %}
+        <section class="section">
+          <h2>{{ section.title }}</h2>
+          <ul>{% for item in section.items|slice:":4" %}<li>{{ item }}</li>{% endfor %}</ul>
+        </section>
+        {% endfor %}
+      </aside>
+    </div>
+    {% if cv.achievements or cv.certifications or cv.references %}
+    <div class="bottom">
+      {% if cv.achievements %}
+      <section class="panel">
+        <h2>Realisations</h2>
+        <ul>{% for item in cv.achievements|slice:":2" %}<li>{{ item }}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+      {% if cv.certifications %}
+      <section class="panel">
+        <h2>Certifications</h2>
+        <ul>{% for item in cv.certifications|slice:":2" %}<li>{{ item }}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+      {% if cv.references %}
+      <section class="panel">
+        <h2>References</h2>
+        <ul>{% for item in cv.references|slice:":2" %}<li>{{ item }}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+</body>
+</html>

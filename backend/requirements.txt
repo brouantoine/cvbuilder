@@ -1,0 +1,12 @@
+Django==6.0.3
+django-cors-headers==4.9.0
+djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
+python-docx==1.2.0
+python-dotenv==1.2.2
+Pillow==12.2.0
+docxtpl==0.20.1
+pypdf==6.4.1
+WeasyPrint==69.0
+opencv-python-headless==4.13.0
+numpy==2.5.0
