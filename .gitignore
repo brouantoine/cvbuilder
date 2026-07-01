@@ -5,6 +5,13 @@ venv/
 *.env
 .env
 
+# Base de données & fichiers utilisateurs (jamais dans le repo)
+db.sqlite3
+*.sqlite3
+backend/media/
+backend/staticfiles/
+staticfiles/
+
 # Node
 node_modules/
 dist/

@@ -97,6 +97,57 @@
   font-size: 0.92rem;
 }
 
+.access-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 1.5rem 0 0;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.access-banner strong {
+  display: block;
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+.access-banner span {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.access-banner.trial {
+  background: var(--primary-tint);
+  border-color: var(--primary-soft);
+}
+
+.access-banner.active {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.access-banner.ended {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+@media (max-width: 620px) {
+  .access-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .access-banner .btn {
+    width: 100%;
+  }
+}
+
 .dash-success {
   margin: 1.25rem 0 0;
   padding: 0.8rem 1rem;

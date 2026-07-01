@@ -14,12 +14,53 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function AccessBanner({ access, onSubscribe, busy, weeklyPrice }) {
+  const days = access.days_left;
+  if (access.is_trial && access.trial_active) {
+    return (
+      <div className="access-banner trial">
+        <div>
+          <strong>🎁 Essai gratuit</strong>
+          <span>Il te reste {days} jour{days > 1 ? "s" : ""}. CV illimités pendant l'essai.</span>
+        </div>
+        <Button variant="outline" onClick={onSubscribe} disabled={busy}>
+          {busy ? "…" : "S'abonner"}
+        </Button>
+      </div>
+    );
+  }
+  if (access.has_active_access && access.plan === "weekly") {
+    return (
+      <div className="access-banner active">
+        <div>
+          <strong>⭐ Abonnement actif</strong>
+          <span>{access.cv_credits} CV restant{access.cv_credits > 1 ? "s" : ""} · expire dans {days} jour{days > 1 ? "s" : ""}.</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="access-banner ended">
+      <div>
+        <strong>Ton accès est terminé</strong>
+        <span>Abonne-toi pour continuer : {weeklyPrice} F / semaine — 5 CV.</span>
+      </div>
+      <Button onClick={onSubscribe} disabled={busy}>
+        {busy ? "…" : `S'abonner (${weeklyPrice} F)`}
+      </Button>
+    </div>
+  );
+}
+
 export function Dashboard() {
   const {
     cvs,
     loading,
     error,
+    access,
     fetchCVs,
+    fetchPlans,
+    initializePayment,
     generateCV,
     downloadCV,
     duplicateCV,
@@ -28,12 +69,26 @@ export function Dashboard() {
   } = useCVStore();
   const [busyId, setBusyId] = useState(null);
   const [paymentMessage, setPaymentMessage] = useState("");
+  const [payBusy, setPayBusy] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchCVs().catch(() => {});
-  }, [fetchCVs]);
+    fetchPlans().catch(() => {});
+  }, [fetchCVs, fetchPlans]);
+
+  const handleSubscribe = async () => {
+    setPayBusy(true);
+    try {
+      const result = await initializePayment("weekly");
+      if (result?.authorization_url) window.location.href = result.authorization_url;
+    } catch {
+      setPaymentMessage("Paiement indisponible pour le moment. Réessaie.");
+    } finally {
+      setPayBusy(false);
+    }
+  };
 
   useEffect(() => {
     const reference = searchParams.get("reference") || searchParams.get("trxref");
@@ -118,6 +173,10 @@ export function Dashboard() {
           </Link>
         </div>
       </section>
+
+      {access?.payments_enforced && (
+        <AccessBanner access={access} onSubscribe={handleSubscribe} busy={payBusy} weeklyPrice={1000} />
+      )}
 
       <section className="dash-stats" aria-label="Statistiques des CV">
         <div>

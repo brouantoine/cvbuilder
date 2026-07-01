@@ -10,3 +10,7 @@ pypdf==6.4.1
 WeasyPrint==69.0
 opencv-python-headless==4.13.0
 numpy==2.5.0
+gunicorn==23.0.0
+whitenoise==6.8.2
+dj-database-url==2.3.0
+psycopg[binary]==3.2.3

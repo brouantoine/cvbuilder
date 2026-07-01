@@ -160,8 +160,12 @@ class CVGenerateView(APIView):
 
         try:
             from .generator import generate_cv_documents
+            from .services.access import unlock_cv
 
             generate_cv_documents(cv)
+            # Consomme 1 crédit hebdo si ce CV n'était pas encore débloqué (gratuit pendant l'essai).
+            unlock_cv(request.user, cv)
+            cv.refresh_from_db(fields=["is_unlocked"])
             pages = getattr(cv, "_page_count", 1)
             warning = None
             if pages > 1:
@@ -320,6 +324,14 @@ class CVPlansView(APIView):
         cv_id = request.query_params.get("cv")
         if cv_id:
             cv = CV.objects.filter(user=request.user, pk=cv_id).first()
+        # Récupère les paiements bloqués (téléphone éteint, onglet fermé après paiement).
+        if settings.PAYSTACK_SECRET_KEY:
+            try:
+                from .services.payments import reconcile_pending_payments
+
+                reconcile_pending_payments(request.user)
+            except Exception:
+                pass
         return Response({
             "plans": payment_plans(),
             "access": access_payload(request.user, cv),

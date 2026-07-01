@@ -61,6 +61,16 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# WhiteNoise (sert les fichiers statiques en production) : ajouté seulement s'il
+# est installé, juste après SecurityMiddleware.
+try:
+    import whitenoise  # noqa: F401
+
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+    _WHITENOISE = True
+except ImportError:
+    _WHITENOISE = False
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
@@ -127,11 +137,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        if _WHITENOISE
+        else "django.contrib.staticfiles.storage.StaticFilesStorage"
+    },
+}
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT") or (BASE_DIR / "media"))
 
 
-# CORS : autoriser le frontend React (Vite par défaut sur 5173)
+# CORS : origines locales + celles fournies en production (DJANGO_CORS_ORIGINS, séparées par des virgules)
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -140,6 +159,24 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5180",
     "http://127.0.0.1:5180",
 ]
+CORS_ALLOWED_ORIGINS += [o.strip() for o in os.getenv("DJANGO_CORS_ORIGINS", "").split(",") if o.strip()]
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+
+# Production : derrière un proxy HTTPS (Render, Railway…)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# Base de données : Postgres via DATABASE_URL en production, sinon SQLite en local.
+_database_url = os.getenv("DATABASE_URL", "")
+if _database_url:
+    try:
+        import dj_database_url
+
+        DATABASES = {"default": dj_database_url.parse(_database_url, conn_max_age=600, ssl_require=True)}
+    except Exception:
+        pass
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -192,11 +229,15 @@ LIBREOFFICE_BINARY = os.getenv("LIBREOFFICE_BINARY", "soffice")
 CV_HTML_RENDERER = os.getenv("CV_HTML_RENDERER", "auto").lower()
 CV_CHROMIUM_BINARY = os.getenv("CV_CHROMIUM_BINARY", "")
 CV_SINGLE_PRICE_XOF = int(os.getenv("CV_SINGLE_PRICE_XOF", "200"))
-CV_WEEKLY_PRICE_XOF = int(os.getenv("CV_WEEKLY_PRICE_XOF", "500"))
+CV_WEEKLY_PRICE_XOF = int(os.getenv("CV_WEEKLY_PRICE_XOF", "1000"))
 CV_EXTRA_AI_PRICE_XOF = int(os.getenv("CV_EXTRA_AI_PRICE_XOF", "50"))
 CV_SINGLE_ACCESS_HOURS = int(os.getenv("CV_SINGLE_ACCESS_HOURS", "2"))
 CV_WEEKLY_ACCESS_HOURS = int(os.getenv("CV_WEEKLY_ACCESS_HOURS", "168"))
 CV_EXTRA_AI_CREDITS = int(os.getenv("CV_EXTRA_AI_CREDITS", "1"))
+
+# Modèle commercial : essai gratuit à l'inscription, puis abonnement hebdomadaire.
+CV_TRIAL_DAYS = int(os.getenv("CV_TRIAL_DAYS", "7"))
+CV_WEEKLY_CV_CREDITS = int(os.getenv("CV_WEEKLY_CV_CREDITS", "5"))
 
 # Dossier où déposer vos modèles Word personnalisés
 CV_TEMPLATE_LIBRARY_DIR = Path(os.getenv("CV_TEMPLATE_LIBRARY_DIR") or BASE_DIR / "cvs" / "docx_templates" / "examples")

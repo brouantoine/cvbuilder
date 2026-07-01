@@ -24,12 +24,26 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        # Essai gratuit de 7 jours offert dès l'inscription.
+        trial_days = 7
+        try:
+            from django.conf import settings
+            from cvs.services.access import grant_trial
+
+            grant_trial(user)
+            trial_days = settings.CV_TRIAL_DAYS
+        except Exception:
+            pass
+
         refresh = RefreshToken.for_user(user)
         return Response(
             {
                 "user": UserSerializer(user).data,
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
+                "trial_days": trial_days,
+                "message": f"Bienvenue 🎉 Tu as un essai gratuit de {trial_days} jours.",
             },
             status=status.HTTP_201_CREATED,
         )

@@ -6,10 +6,11 @@ import urllib.error
 import urllib.request
 
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
-from cvs.models import CV, PaymentTransaction
-from cvs.services.access import grant_access, has_expired_cv_access, plan_for
+from cvs.models import PaymentTransaction
+from cvs.services.access import grant_access, plan_for
 
 PAYSTACK_BASE_URL = "https://api.paystack.co"
 
@@ -81,20 +82,13 @@ def _reference(user_id, plan_type):
 
 
 def initialize_payment(user, plan_type, cv_id=None):
+    # Modèle actuel : seul l'abonnement hebdomadaire est vendu (essai gratuit à l'inscription).
+    plan_type = plan_type or PaymentTransaction.PLAN_WEEKLY
     plan = plan_for(plan_type)
-    cv = None
-    if plan_type in {PaymentTransaction.PLAN_SINGLE_CV, PaymentTransaction.PLAN_EXTRA_AI}:
-        if not cv_id:
-            raise ValueError("Ce plan doit être lié à un CV.")
-        cv = CV.objects.filter(user=user, pk=cv_id).first()
-        if cv is None:
-            raise ValueError("CV introuvable.")
-        if plan_type == PaymentTransaction.PLAN_EXTRA_AI and not has_expired_cv_access(user, cv):
-            raise ValueError("La prolongation à 50 F est disponible après les 2 h.")
 
     payment = PaymentTransaction.objects.create(
         user=user,
-        cv=cv,
+        cv=None,
         plan_type=plan_type,
         amount_xof=plan["amount_xof"],
         currency=settings.PAYSTACK_CURRENCY,
@@ -109,7 +103,7 @@ def initialize_payment(user, plan_type, cv_id=None):
         "callback_url": settings.PAYSTACK_CALLBACK_URL,
         "metadata": {
             "user_id": user.id,
-            "cv_id": cv.id if cv else None,
+            "cv_id": None,
             "plan_type": payment.plan_type,
             "amount_xof": payment.amount_xof,
         },
@@ -123,9 +117,16 @@ def initialize_payment(user, plan_type, cv_id=None):
     return payment
 
 
+@transaction.atomic
 def mark_success(payment, raw_response=None):
+    """Marque le paiement réussi et octroie le droit. IDEMPOTENT : un 2e appel
+    (webhook + verify) ne crée pas de second droit (verrou + état)."""
+    payment = PaymentTransaction.objects.select_for_update().get(pk=payment.pk)
+    if payment.status == PaymentTransaction.STATUS_SUCCESS:
+        grant_access(payment)  # update_or_create(payment=...) : idempotent
+        return payment
     payment.status = PaymentTransaction.STATUS_SUCCESS
-    payment.paid_at = timezone.now()
+    payment.paid_at = payment.paid_at or timezone.now()
     if raw_response is not None:
         payment.raw_response = raw_response
     payment.save(update_fields=["status", "paid_at", "raw_response", "updated_at"])
@@ -153,6 +154,24 @@ def verify_payment(reference, user=None):
     else:
         payment.save(update_fields=["raw_response", "updated_at"])
     return payment
+
+
+def reconcile_pending_payments(user):
+    """Re-vérifie auprès de Paystack les paiements en attente de l'utilisateur.
+    Récupère les cas où le webhook n'est pas arrivé (téléphone éteint, connexion
+    coupée, onglet fermé après paiement). Sûr à appeler souvent (ex. au login)."""
+    pending = PaymentTransaction.objects.filter(
+        user=user, status=PaymentTransaction.STATUS_PENDING
+    ).order_by("-created_at")[:10]
+    updated = 0
+    for payment in pending:
+        try:
+            result = verify_payment(payment.reference, user=user)
+            if result.status == PaymentTransaction.STATUS_SUCCESS:
+                updated += 1
+        except Exception:
+            continue
+    return updated
 
 
 def verify_webhook_signature(raw_body, signature):

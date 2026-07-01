@@ -62,6 +62,9 @@ class CV(models.Model):
     generated_file = models.FileField(upload_to="cvs/generated/", blank=True, null=True)
     generated_pdf = models.FileField(upload_to="cvs/generated/", blank=True, null=True)
     generated_at = models.DateTimeField(blank=True, null=True)
+    # Un CV « déverrouillé » a consommé un crédit (ou a été créé pendant l'essai) ;
+    # il peut être régénéré/retéléchargé librement ensuite.
+    is_unlocked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -80,9 +83,11 @@ class PaymentTransaction(models.Model):
     PLAN_SINGLE_CV = "single_cv"
     PLAN_WEEKLY = "weekly"
     PLAN_EXTRA_AI = "extra_ai"
+    PLAN_TRIAL = "trial"
     PLAN_CHOICES = [
-        (PLAN_SINGLE_CV, "CV individuel"),
+        (PLAN_TRIAL, "Essai gratuit"),
         (PLAN_WEEKLY, "Abonnement semaine"),
+        (PLAN_SINGLE_CV, "CV individuel"),
         (PLAN_EXTRA_AI, "Prolongation IA"),
     ]
 
@@ -136,6 +141,8 @@ class AccessGrant(models.Model):
     starts_at = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField(blank=True, null=True)
     ai_credits = models.PositiveIntegerField(blank=True, null=True)
+    # Nombre de CV restant à débloquer sur ce droit (None = illimité, ex. essai).
+    cv_credits = models.PositiveIntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
