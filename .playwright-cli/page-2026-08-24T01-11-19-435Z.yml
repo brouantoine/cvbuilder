@@ -1,0 +1,41 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "CVBuilder" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e7]:
+        - link "Mes CV" [ref=e73] [cursor=pointer]:
+          - /url: /dashboard
+        - generic [ref=e74]: codex_ui_check
+        - button "Déconnexion" [ref=e75] [cursor=pointer]
+  - main [ref=e10]:
+    - generic [ref=e76]:
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - paragraph [ref=e79]: Espace CV
+          - heading "Vos CV" [level=1] [ref=e80]
+          - paragraph [ref=e81]: Créez un CV, adaptez-le à une offre, téléchargez le PDF.
+        - generic [ref=e82]:
+          - link [ref=e83] [cursor=pointer]:
+            - /url: /builder
+            - button "Créer un CV" [ref=e84]
+          - link "Voir les modèles" [ref=e85] [cursor=pointer]:
+            - /url: /templates
+      - region "Statistiques des CV" [ref=e86]:
+        - generic [ref=e87]:
+          - strong [ref=e88]: "0"
+          - generic [ref=e89]: CV au total
+        - generic [ref=e90]:
+          - strong [ref=e91]: "0"
+          - generic [ref=e92]: Prêts à envoyer
+        - generic [ref=e93]:
+          - strong [ref=e94]: "0"
+          - generic [ref=e95]: Brouillons
+      - generic [ref=e97]:
+        - heading "Mes CV" [level=2] [ref=e98]
+        - paragraph [ref=e99]: Reprenez un CV ou créez-en un nouveau.
+      - link "+ Nouveau CV Importer un PDF ou saisir manuellement" [ref=e101] [cursor=pointer]:
+        - /url: /builder
+        - generic [ref=e102]: +
+        - strong [ref=e103]: Nouveau CV
+        - generic [ref=e104]: Importer un PDF ou saisir manuellement

@@ -321,11 +321,13 @@ def _readable_palette(palette):
     """Enrichit la palette de couleurs dérivées garanties lisibles :
     - on_dark : accent (ou substitut) visible sur le fond sombre de la sidebar ;
     - on_accent : texte/icône visible sur un aplat couleur accent ;
-    - on_light : accent (ou substitut) visible sur fond blanc."""
+    - on_light : accent (ou substitut) visible sur fond blanc.
+    Seuil on_dark à 3.5 : sous ce ratio, les petites icônes paraissent noires à
+    l'impression (ex. bleu azur 2.8 sur marine) — on bascule alors en blanc."""
     enriched = dict(palette or {})
     accent = enriched.get("accent", "#2563eb")
     dark = enriched.get("dark", "#111827")
-    enriched.setdefault("on_dark", _visible_on(dark, accent))
+    enriched.setdefault("on_dark", _visible_on(dark, accent, minimum=3.5))
     enriched.setdefault("on_accent", _visible_on(accent, "#ffffff", dark="#111827"))
     enriched.setdefault("on_light", _visible_on("#ffffff", accent, dark=dark))
     return enriched
@@ -402,6 +404,32 @@ def _experience_items(data):
     return items
 
 
+def _project_items(data):
+    """Projets réalisés, structurés comme une expérience (titre, sous-titre,
+    période, missions) avec une distinction/prix optionnelle (badge trophée).
+    Deux liens indépendants : celui du site/projet (rend le titre cliquable) et
+    celui du prix (rend le badge cliquable). Si le site n'est pas en ligne,
+    `link_note` sert de justification texte (ex. « Déploiement en cours »,
+    « Démo locale »), affichée à la place ou en complément du lien."""
+    items = []
+    for proj in _clean_items(data.get("projects")):
+        title = _safe_text(proj.get("title")) or _safe_text(proj.get("job_title"))
+        if not title:
+            continue
+        subtitle = _safe_text(proj.get("subtitle"))
+        period = _safe_text(proj.get("period"))
+        award = _safe_text(proj.get("award"))
+        award_link = _safe_text(proj.get("award_link") or proj.get("award_url"))
+        link = _safe_text(proj.get("link") or proj.get("url") or proj.get("site"))
+        link_note = _safe_text(proj.get("link_note") or proj.get("status"))
+        missions = [_safe_text(item) for item in proj.get("missions") or [] if _safe_text(item)]
+        items.append({
+            "title": title, "subtitle": subtitle, "period": period, "missions": missions,
+            "award": award, "award_link": award_link, "link": link, "link_note": link_note,
+        })
+    return items
+
+
 def _education_items(data):
     # Aucune troncature : TOUS les diplômes sont affichés.
     items = []
@@ -431,7 +459,50 @@ def _extra_sections(data):
     sections = []
     for section in _clean_items(data.get("extra_sections")):
         title = _safe_text(section.get("title"))
-        items = [_safe_text(item) for item in section.get("items") or [] if _safe_text(item)]
+        raw_items = section.get("items") or []
+        items = []
+        for item in raw_items:
+            if isinstance(item, dict):
+                # Structured item (déjà label/subtitle/link) : conservé tel quel.
+                label = _safe_text(item.get("label") or item.get("title") or item.get("name") or item.get("degree") or item.get("project") or "")
+                subtitle = _safe_text(item.get("subtitle") or item.get("sub") or item.get("meta") or "")
+                link = _safe_text(item.get("link") or item.get("url") or item.get("verify_url") or "")
+                if label:
+                    entry = {"label": label}
+                    if subtitle:
+                        entry["subtitle"] = subtitle
+                    if link:
+                        entry["link"] = link
+                    items.append(entry)
+                    continue
+                # Dict sans champ label reconnu : on retente à partir de ses valeurs textuelles.
+                s = " ".join(_safe_text(v) for v in item.values() if not isinstance(v, (list, dict)))
+            else:
+                # Élément texte simple (cas le plus courant : saisie manuelle de
+                # l'utilisateur) — SANS ce branchement, ces éléments étaient
+                # silencieusement ignorés et la section ressortait vide.
+                s = _safe_text(item)
+
+            if not s:
+                continue
+            # Détecte une URL inline et sépare label / subtitle si présent.
+            url_match = re.search(r"(https?://\S+|www\.\S+)", s)
+            link = ""
+            if url_match:
+                link = url_match.group(0)
+                s = s.replace(link, "").strip(" ()")
+
+            # Séparer label et subtitle par '—' ou '-' ou '–'.
+            parts = re.split(r"\s*[—–-]\s*", s, maxsplit=1)
+            label = parts[0].strip()
+            subtitle = parts[1].strip() if len(parts) > 1 else ""
+            if label:
+                entry = {"label": label}
+                if subtitle:
+                    entry["subtitle"] = subtitle
+                if link:
+                    entry["link"] = link
+                items.append(entry)
         if title and items:
             sections.append({"title": title, "items": items})
     return sections
@@ -455,7 +526,9 @@ def _other_extra_sections(extra_sections):
     consumed = [
         "realisation", "réalisation", "projet", "project", "achievement",
         "certification", "certificat", "reference", "référence", "recommandation",
-        "outil", "logiciel", "technique",
+        "informatique", "outil", "logiciel", "technique",
+        "aptitude", "qualite", "qualité", "savoir-etre", "savoir-être",
+        "prix", "distinction", "award", "awards", "distinctions",
     ]
     return [section for section in extra_sections if not _section_matches(section, consumed)]
 
@@ -502,7 +575,7 @@ def _skill_ratings(items):
     percents = [95, 90, 84, 78, 72, 68]
     ratings = []
     for index, item in enumerate(items[:8]):
-        label = _safe_text(item)
+        label = _safe_text(item.get("label")) if isinstance(item, dict) else _safe_text(item)
         if label:
             ratings.append({"label": label, "percent": percents[min(index, len(percents) - 1)]})
     return ratings
@@ -548,11 +621,19 @@ def _main_column_lines(data):
             if _safe_text(mission):
                 lines += max(1, len(re.findall(r"\w+", _safe_text(mission))) // 11)
     lines += len(_clean_items(data.get("education"))) * 3
-    extra = _extra_sections(data)
-    projects = _section_items(extra, "projet", "project")
-    certs = _section_items(extra, "certification", "certificat")
-    if projects:
-        lines += 2 + len(projects)
+    structured_projects = _project_items(data)
+    if structured_projects:
+        for proj in structured_projects:
+            lines += 3  # période + titre + sous-titre
+            for mission in proj["missions"]:
+                lines += max(1, len(re.findall(r"\w+", mission)) // 11)
+            if proj["award"]:
+                lines += 1
+    else:
+        legacy_projects = _section_items(_extra_sections(data), "projet", "project")
+        if legacy_projects:
+            lines += 2 + len(legacy_projects)
+    certs = _section_items(_extra_sections(data), "certification", "certificat")
     if certs:
         lines += 2 + len(certs)
     return lines
@@ -561,7 +642,9 @@ def _main_column_lines(data):
 def _side_column_lines(data):
     """Estime le nombre de lignes occupées par la colonne latérale (hors compétences)."""
     extra = _extra_sections(data)
-    tools = _section_items(extra, "informatique", "outil", "logiciel", "technique")
+    tools = _clean_items(data.get("tools")) or _section_items(
+        extra, "informatique", "outil", "logiciel", "technique"
+    )
     lines = 7  # photo + nom
     lines += len(_identity_lines(data)) + len(_contact_items(data)) + 2
     lines += len(_language_ratings(data)) * 2 + 1 if _language_ratings(data) else 0
@@ -573,38 +656,155 @@ def _side_column_lines(data):
 
 SIDE_CAPACITY = 42  # lignes tenant dans la colonne latérale d'une page
 
-# Sections de la colonne principale que l'on peut déplacer vers la latérale.
-_MOVABLE_SECTIONS = (
-    ("skills", "Compétences"),
-    ("certifications", "Certifications"),
-    ("projects", "Projets réalisés"),
-)
+# Hauteur physique approximative d'une ligne dans chaque colonne (mm) : la
+# latérale est en ~9pt serré, la principale en ~10pt aéré. Sert à comparer le
+# remplissage RÉEL des deux colonnes (pas juste un nombre de lignes brut).
+_MAIN_LINE_MM = 4.7
+_SIDE_LINE_MM = 4.1
+
+# Cible d'équilibre EN PROPORTION (pas en mm bruts) : on vise un partage
+# 50/50 du remplissage entre les deux colonnes, et on tolère un écart
+# jusqu'à 60/40 dans le pire des cas — jamais plus. Raisonner en proportion
+# (plutôt qu'en écart absolu) rend le réglage stable quel que soit le
+# volume du CV : un petit CV et un CV très dense visent le même équilibre
+# relatif, pas le même nombre de mm.
+_BALANCE_TARGET_RATIO = 0.5
+_BALANCE_MAX_SKEW = 0.6
+
+# Jamais plus de 3 sections déplacées en mode esthétique : au-delà, la
+# latérale devient un fourre-tout illisible et la principale perd trop de
+# substance narrative pour un gain d'équilibre marginal.
+_BALANCE_MAX_MOVES = 3
 
 
-def _moved_section_data(cv, section):
-    """Retourne (titre, items) de la section déplacée, depuis le contexte normalisé."""
-    mapping = {
-        "skills": ("Compétences", cv.get("skills") or []),
-        "certifications": ("Certifications", cv.get("certifications") or []),
-        "projects": ("Projets réalisés", cv.get("projects") or []),
-    }
-    return mapping.get(section, ("", []))
+def _side_fill_ratio(main_lines, side_lines):
+    """Part de la latérale dans le remplissage total des deux colonnes
+    (0.5 = parfaitement équilibré, >0.5 = latérale plus chargée que la
+    principale). Raisonne en mm réels (pas en nombre de lignes brut) car les
+    deux colonnes n'ont ni la même largeur ni la même taille de police."""
+    main_mm = max(main_lines, 0) * _MAIN_LINE_MM
+    side_mm = max(side_lines, 0) * _SIDE_LINE_MM
+    total_mm = main_mm + side_mm
+    return side_mm / total_mm if total_mm else _BALANCE_TARGET_RATIO
 
 
-def _move_candidates(data):
-    """Ordonne les sections déplaçables : on essaie d'abord celle qui remplit le
-    mieux l'espace libre de la colonne latérale sans la faire déborder.
-    Ainsi ce n'est pas toujours « Compétences » qui bouge — la plus adaptée est choisie."""
-    cv = _normalize_data(data)
-    free = SIDE_CAPACITY - _side_column_lines(data)
-    present = []
-    for section, _label in _MOVABLE_SECTIONS:
-        items = cv.get(section) or []
-        if items:
-            present.append((section, len(items)))
-    fits = sorted((c for c in present if c[1] <= free), key=lambda c: -c[1])
-    rest = sorted((c for c in present if c[1] > free), key=lambda c: c[1])
-    return [section for section, _size in fits + rest]
+def _section_side_lines(items):
+    """Lignes qu'occuperait une section déplacée dans la colonne latérale
+    (titre + items, avec retours à la ligne probables sur les libellés longs)."""
+    lines = 2  # titre + respiration
+    for item in items:
+        label = item.get("label", "") if isinstance(item, dict) else _safe_text(item)
+        lines += max(1, len(_safe_text(label)) // 34 + 1)
+    return lines
+
+
+def _movable_candidates(cv):
+    """Sections COMPACTES (listes courtes) éligibles au déplacement vers la
+    latérale : compétences, certifications, réalisations, références, et
+    chaque section personnalisée non reconnue. Jamais les expériences,
+    formations ou projets — ce sont des blocs narratifs qui doivent rester
+    entiers et lisibles dans la colonne principale."""
+    candidates = []
+    if cv.get("skills"):
+        candidates.append({"key": "skills", "title": "Compétences", "items": cv["skills"]})
+    if cv.get("certifications"):
+        candidates.append({"key": "certifications", "title": "Certifications", "items": cv["certifications"]})
+    if cv.get("achievements"):
+        candidates.append({"key": "achievements", "title": "Réalisations", "items": cv["achievements"]})
+    if cv.get("references"):
+        candidates.append({"key": "references", "title": "Références", "items": cv["references"]})
+    if cv.get("legacy_projects"):
+        candidates.append({"key": "legacy_projects", "title": "Projets réalisés", "items": cv["legacy_projects"]})
+    for index, section in enumerate(cv.get("other_extra_sections") or []):
+        if section.get("items"):
+            candidates.append({"key": f"other:{index}", "title": section["title"], "items": section["items"]})
+    return candidates
+
+
+def _auto_balance_sections(cv, data, force_fit=False):
+    """Équilibrage MULTI-SECTIONS des deux colonnes par un algorithme du
+    « meilleur ajustement » (best-fit), déterministe, rapide et reproductible
+    — délibérément SANS appel IA au rendu : un rendu doit rester instantané et
+    stable d'un aperçu à l'autre, ce qu'un appel modèle ne garantit pas.
+
+    RÈGLES PRÉCISES (dans cet ordre, à chaque itération) :
+    1. Seules les sections COMPACTES sont candidates (cf. _movable_candidates)
+       — jamais les expériences, formations ou projets.
+    2. La cible est un partage 50/50 du remplissage entre les deux colonnes
+       (_BALANCE_TARGET_RATIO) ; on ne déclenche AUCUN déplacement si on est
+       déjà entre 40/60 et 60/40 (_BALANCE_MAX_SKEW) : un léger déséquilibre
+       est normal et imperceptible, inutile de bouger du contenu pour le
+       principe — et ça garde le rendu STABLE d'un aperçu à l'autre.
+       Raisonner en proportion plutôt qu'en écart absolu rend le réglage
+       identique pour un petit CV et un CV très dense.
+    3. Parmi les candidats qui tiennent encore dans l'espace latéral libre,
+       on choisit celui qui rapproche le PLUS le ratio de 50/50 (meilleur
+       ajustement selon sa taille). Pas de plafond dur à 60/40 ici : si le
+       seul candidat disponible ramène le ratio à, disons, 61/39, c'est quand
+       même accepté tant que ça rapproche du 50/50 — rester au déséquilibre
+       de départ sous prétexte qu'aucun candidat ne « rentre » pile dans la
+       fourchette serait pire, pas mieux.
+    4. Un déplacement n'est accepté que s'il rapproche RÉELLEMENT du 50/50 —
+       jamais de mouvement qui empire ou n'apporte rien (stabilité avant
+       tout : pas de va-et-vient inutile entre deux rendus).
+    5. On s'arrête dès qu'on est dans la fourchette cible, qu'il n'y a plus
+       de candidat qui tienne dans l'espace libre ou qui aide encore, ou
+       après _BALANCE_MAX_MOVES déplacements (mode esthétique uniquement —
+       en mode force_fit, aucune limite de nombre : on prend tout ce qui
+       peut aider à tenir sur une page).
+
+    Renvoie la liste des sections déplacées (dicts {key, title, items}).
+    """
+    remaining = _movable_candidates(cv)
+    if not remaining:
+        return []
+
+    main_lines = _main_column_lines(data)
+    side_lines = _side_column_lines(data)
+    moved = []
+    max_moves = len(remaining) if force_fit else _BALANCE_MAX_MOVES
+    skew_floor = 1 - _BALANCE_MAX_SKEW
+
+    for _ in range(max_moves):
+        ratio = _side_fill_ratio(main_lines, side_lines)
+        if not force_fit and skew_floor <= ratio <= _BALANCE_MAX_SKEW:
+            break
+        free = SIDE_CAPACITY - side_lines
+        if free < 1 or not remaining:
+            break
+
+        scored = []
+        for candidate in remaining:
+            side_gain_lines = _section_side_lines(candidate["items"])
+            if side_gain_lines > free:
+                continue
+            main_loss_lines = 2 + len(candidate["items"])
+            new_ratio = _side_fill_ratio(main_lines - main_loss_lines, side_lines + side_gain_lines)
+            # Meilleur ajustement : le plus proche possible de 50/50. Pas de
+            # plafond dur ici — un candidat qui dépasse légèrement 60/40 de
+            # l'autre côté reste accepté s'il RAPPROCHE quand même de 50/50
+            # (cf. le test juste après la boucle) : rester au pire déséquilibre
+            # de départ sous prétexte qu'aucun candidat ne « rentre » pile dans
+            # la fourchette serait pire, pas mieux. En mode force_fit, priorité
+            # au plus gros gain (libérer un maximum de hauteur en colonne
+            # principale pour tenir sur une page).
+            fit_score = abs(_BALANCE_TARGET_RATIO - new_ratio) if not force_fit else -side_gain_lines
+            scored.append((fit_score, new_ratio, side_gain_lines, main_loss_lines, candidate))
+
+        if not scored:
+            break
+        scored.sort(key=lambda row: row[0])
+        _, new_ratio, side_gain_lines, main_loss_lines, chosen = scored[0]
+
+        if not force_fit and abs(new_ratio - _BALANCE_TARGET_RATIO) >= abs(ratio - _BALANCE_TARGET_RATIO):
+            break  # ce déplacement n'améliore rien : on s'arrête là (stabilité)
+
+        moved.append(chosen)
+        remaining.remove(chosen)
+        main_lines -= main_loss_lines
+        side_lines += side_gain_lines
+
+    return moved
 
 
 def _fit_class(data):
@@ -639,15 +839,28 @@ def _normalize_data(data):
     last_name = _safe_text(data.get("last_name"))
     full_name = " ".join(part for part in [first_name, last_name] if part) or "Mon CV"
     skills = [_safe_text(item) for item in _clean_items(data.get("skills")) if _safe_text(item)]
+    explicit_tools = [_safe_text(item) for item in _clean_items(data.get("tools")) if _safe_text(item)]
     hobbies = [_safe_text(item) for item in _clean_items(data.get("hobbies")) if _safe_text(item)]
     experiences = _experience_items(data)
     education = _education_items(data)
     extra_sections = _extra_sections(data)
-    projects = _section_items(extra_sections, "projet", "project")
+    # Projets structurés (titre, sous-titre, période, missions, prix) : nouveau
+    # format riche, affiché en timeline. Un CV plus ancien qui n'a qu'une
+    # section libre "Projets" (simples puces, sans titre/période individuels)
+    # NE DOIT JAMAIS être forcé dans ce format — une puce n'est pas un projet à
+    # part entière (bug corrigé : ça produisait de fausses fiches-projet avec
+    # la puce entière en guise de titre en majuscules, sans sous-titre ni
+    # période). Ce cas passe dans `legacy_projects`, affiché en liste simple.
+    projects = _project_items(data)
+    legacy_projects = [] if projects else _section_items(
+        extra_sections, "projet", "project", "prix", "distinction", "award", "awards", "distinctions"
+    )
     achievements = _section_items(extra_sections, "realisation", "réalisation", "achievement")
     certifications = _section_items(extra_sections, "certification", "certificat")
     references = _section_items(extra_sections, "reference", "référence", "recommandation")
-    tools = _section_items(extra_sections, "informatique", "outil", "logiciel", "technique")
+    tools = explicit_tools or _section_items(
+        extra_sections, "informatique", "outil", "logiciel", "technique"
+    )
     aptitudes = _section_items(extra_sections, "aptitude", "qualite", "qualité", "savoir-etre", "savoir-être")
     return {
         "first_name": first_name,
@@ -670,6 +883,7 @@ def _normalize_data(data):
         "extra_sections": extra_sections,
         "other_extra_sections": _other_extra_sections(extra_sections),
         "projects": projects,
+        "legacy_projects": legacy_projects,
         "achievements": achievements,
         "certifications": certifications,
         "references": references,
@@ -677,33 +891,66 @@ def _normalize_data(data):
         "tagline": _safe_text(data.get("tagline")),
         "identity_lines": _identity_lines(data),
         "language_ratings": _language_ratings(data),
-        "skill_ratings": _skill_ratings(tools or skills),
+        # Informatique et compétences sont deux rubriques indépendantes. Un CV
+        # sans outils renseignés ne doit jamais recopier ses compétences sous
+        # un faux titre « Informatiques ».
+        "skill_ratings": _skill_ratings(tools),
         "aptitudes": (aptitudes or []),
         "fit_class": _fit_class(data),
-        "moved_section": "",
-        "moved_title": "",
-        "moved_items": [],
+        "moved_sections": [],
     }
 
 
-def render_cv_html(template, data, moved_section=None, fit_class=None):
+def _bake_icon_colors(cv, palette):
+    """Remplace `currentColor` par la couleur hexadécimale réelle DANS le SVG.
+    WeasyPrint n'hérite pas fiablement de `color` (CSS) vers `currentColor`
+    (SVG) pour du HTML brut inséré via |safe : les icônes ressortaient toutes
+    noires au rendu PDF, quelle que soit la couleur déclarée en CSS. On fixe
+    donc la couleur directement dans le balisage, indépendamment de l'héritage."""
+    contact_color = palette.get("on_dark", "#ffffff")
+    for item in cv.get("contact_items") or []:
+        if item.get("icon"):
+            item["icon"] = item["icon"].replace("currentColor", contact_color)
+    # Hobbies (prestige) : icônes sombres fixes sur fond blanc (cf. .hico en CSS).
+    hobby_color = "#2c2d2f"
+    for item in cv.get("hobby_items") or []:
+        if item.get("icon"):
+            item["icon"] = item["icon"].replace("currentColor", hobby_color)
+
+
+def render_cv_html(template, data, moved_sections=None, fit_class=None, force_fit=False):
     spec = _html_spec_for_template(template)
     if not spec:
         raise UnsupportedHTMLTemplate("Ce modèle n'a pas encore de rendu HTML/CSS.")
     cv = _normalize_data(data or {})
     if fit_class:
         cv["fit_class"] = fit_class
-    if moved_section:
-        title, items = _moved_section_data(cv, moved_section)
-        if items:
-            cv["moved_section"] = moved_section
-            cv["moved_title"] = title
-            cv["moved_items"] = items
+    # Équilibrage automatique des colonnes (sauf déplacement déjà imposé par le
+    # moteur « 1 page ») : redistribue les sections compactes (compétences,
+    # certifications, réalisations, références, sections perso) vers la
+    # latérale selon des règles précises de meilleur ajustement — voir
+    # _auto_balance_sections. Jamais un côté presque vide face à l'autre plein.
+    if moved_sections is None and spec.get("variant") in {"chic", "prestige"}:
+        moved_sections = _auto_balance_sections(cv, data or {}, force_fit=force_fit)
+    if moved_sections:
+        moved_keys = {candidate["key"] for candidate in moved_sections}
+        cv["moved_sections"] = [{"title": c["title"], "items": c["items"]} for c in moved_sections]
+        # Retire les sections déplacées de la colonne principale — les
+        # templates n'ont ainsi plus besoin de savoir CE QUI a été déplacé.
+        for key in ("skills", "certifications", "achievements", "references", "legacy_projects"):
+            if key in moved_keys:
+                cv[key] = []
+        cv["other_extra_sections"] = [
+            section for index, section in enumerate(cv["other_extra_sections"])
+            if f"other:{index}" not in moved_keys
+        ]
+    palette = _readable_palette(spec["palette"])
+    _bake_icon_colors(cv, palette)
     return render_to_string(
         spec["template"],
         {
             "spec": spec,
-            "palette": _readable_palette(spec["palette"]),
+            "palette": palette,
             "cv": cv,
         },
     )
@@ -816,6 +1063,33 @@ def _preferred_engines():
     return [configured]
 
 
+def _strip_trailing_blank_pages(pdf_bytes):
+    """WeasyPrint fragmente parfois une grille (`.side` à `min-height: 297mm`
+    dans une `.page` à `min-height: 297mm`) en page(s) fantômes totalement
+    vides quand le contenu dépasse la hauteur d'une fraction de mm — un pur
+    artefact de pagination, jamais du vrai contenu qui déborde. On les
+    retire pour que le compteur de pages (et le PDF livré) ne comptent que
+    les pages qui contiennent réellement quelque chose."""
+    try:
+        from pypdf import PdfReader, PdfWriter
+
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        pages = reader.pages
+        last = len(pages)
+        while last > 1 and not (pages[last - 1].extract_text() or "").strip():
+            last -= 1
+        if last == len(pages):
+            return pdf_bytes
+        writer = PdfWriter()
+        for page in pages[:last]:
+            writer.add_page(page)
+        buffer = io.BytesIO()
+        writer.write(buffer)
+        return buffer.getvalue()
+    except Exception:
+        return pdf_bytes
+
+
 def _convert_html_to_pdf(html, base_name):
     errors = []
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -828,11 +1102,11 @@ def _convert_html_to_pdf(html, base_name):
         for engine in _preferred_engines():
             try:
                 if engine == "weasyprint":
-                    return _pdf_with_weasyprint(html, tmp, safe_name)
+                    return _strip_trailing_blank_pages(_pdf_with_weasyprint(html, tmp, safe_name))
                 if engine == "chromium":
-                    return _pdf_with_chromium(html_path, pdf_path, tmp)
+                    return _strip_trailing_blank_pages(_pdf_with_chromium(html_path, pdf_path, tmp))
                 if engine == "libreoffice":
-                    return _pdf_with_libreoffice(html_path, pdf_path, tmp)
+                    return _strip_trailing_blank_pages(_pdf_with_libreoffice(html_path, pdf_path, tmp))
                 errors.append(f"Moteur inconnu: {engine}")
             except Exception as exc:
                 errors.append(str(exc))
@@ -857,10 +1131,19 @@ def _supports_section_move(template):
 _FIT_LEVELS = ["fit-0", "fit-1", "fit-2", "fit-3", "fit-4", "fit-5", "fit-6"]
 
 
-def _best_layout(template, data, base_name):
-    """« Shrink-to-fit » : affiche TOUTES les infos, puis réduit progressivement
-    tailles + espaces, et au besoin déplace une section vers la colonne latérale,
-    jusqu'à tenir sur UNE page — sans jamais supprimer d'information."""
+def _best_layout(template, data, base_name, aggressive=False):
+    """« Shrink-to-fit » : RÈGLE STRICTE — le CV doit tenir sur UNE page.
+    Boucle de correction qui essaie, à chaque palier de compression (du plus
+    lisible au plus dense), D'ABORD l'équilibrage esthétique normal des deux
+    colonnes PUIS un équilibrage maximal (déplacement de tout ce qui peut
+    l'être vers la latérale) — et s'arrête au tout premier réglage qui tient
+    sur une page, pour rester aussi lisible que possible. Jamais de
+    suppression d'information : uniquement compression + redistribution.
+
+    `aggressive=True` (déclenché par l'utilisateur via « Mon CV fait 2 pages,
+    corrige-le ») démarre la redistribution maximale dès le premier palier
+    au lieu d'attendre d'avoir tout essayé sans — utile quand le rendu
+    automatique n'a pas suffi et que l'utilisateur veut le maximum d'effort."""
     # Point de départ : un cran sous le niveau estimé (on évite de sur-compresser
     # si l'estimation surévalue la densité ; on remontera si besoin).
     start = _fit_class(data)
@@ -871,39 +1154,52 @@ def _best_layout(template, data, base_name):
 
     html = render_cv_html(template, data, fit_class=_FIT_LEVELS[start_index])
     pdf = _convert_html_to_pdf(html, base_name)
-    if not _supports_section_move(template) or _pdf_page_count(pdf) <= 1:
+    if not _supports_section_move(template):
+        return html, pdf
+
+    if _pdf_page_count(pdf) <= 1 and not aggressive:
+        # Dé-escalade : l'estimation sur-évalue parfois la densité, ce qui
+        # « reconcentrait » inutilement le CV. Tant que la page tient, on
+        # essaie plus AÉRÉ et on garde la version la plus confortable.
+        for index in range(start_index - 1, -1, -1):
+            alt_html = render_cv_html(template, data, fit_class=_FIT_LEVELS[index])
+            alt_pdf = _convert_html_to_pdf(alt_html, base_name)
+            if _pdf_page_count(alt_pdf) > 1:
+                break
+            html, pdf = alt_html, alt_pdf
         return html, pdf
 
     best_html, best_pdf, best_pages = html, pdf, _pdf_page_count(pdf)
+    best_balanced = False
 
-    # 1) Compression progressive (sans déplacer de section).
-    for level in _FIT_LEVELS[start_index + 1:]:
-        alt_html = render_cv_html(template, data, fit_class=level)
-        alt_pdf = _convert_html_to_pdf(alt_html, base_name)
-        pages = _pdf_page_count(alt_pdf)
-        if pages < best_pages:
-            best_html, best_pdf, best_pages = alt_html, alt_pdf, pages
-        if pages <= 1:
-            return best_html, best_pdf
-
-    # 2) Toujours trop dense : on déplace une section vers la colonne latérale,
-    #    au niveau de compression le plus fort, et on garde la version à 1 page.
-    for section in _move_candidates(data):
-        alt_html = render_cv_html(template, data, moved_section=section, fit_class="fit-6")
-        if alt_html == best_html:
-            continue
-        alt_pdf = _convert_html_to_pdf(alt_html, base_name)
-        pages = _pdf_page_count(alt_pdf)
-        if pages < best_pages:
-            best_html, best_pdf, best_pages = alt_html, alt_pdf, pages
-        if pages <= 1:
-            return best_html, best_pdf
+    # Boucle de correction : à chaque palier, essaie sans déplacement forcé
+    # PUIS avec (force_fit). S'arrête dès qu'une page suffit. En mode
+    # `aggressive`, on inclut aussi le palier de départ (on ne se contente pas
+    # de la version « lisible » initiale, l'objectif prioritaire est 1 page).
+    # Si aucun palier ne fait tenir sur une page, on ne retombe jamais sur le
+    # tout premier rendu (souvent déséquilibré, cf. colonne latérale à moitié
+    # vide alors que la principale déborde) : à nombre de pages égal, une
+    # version qui a redistribué du contenu (force_fit) l'emporte toujours sur
+    # une version qui n'a rien déplacé.
+    levels = _FIT_LEVELS[start_index:] if aggressive else _FIT_LEVELS[start_index + 1:]
+    for level in levels:
+        for force in (False, True):
+            alt_html = render_cv_html(template, data, fit_class=level, force_fit=force)
+            if alt_html == best_html:
+                continue
+            alt_pdf = _convert_html_to_pdf(alt_html, base_name)
+            pages = _pdf_page_count(alt_pdf)
+            if pages < best_pages or (pages == best_pages and force and not best_balanced):
+                best_html, best_pdf, best_pages = alt_html, alt_pdf, pages
+                best_balanced = force
+            if pages <= 1:
+                return best_html, best_pdf
 
     return best_html, best_pdf
 
 
-def render_html_template_pdf_bytes(template, data, base_name="cv"):
-    return _best_layout(template, data, base_name)[1]
+def render_html_template_pdf_bytes(template, data, base_name="cv", aggressive=False):
+    return _best_layout(template, data, base_name, aggressive=aggressive)[1]
 
 
 def resolve_cv_html(template, data, base_name="preview"):
@@ -912,15 +1208,95 @@ def resolve_cv_html(template, data, base_name="preview"):
     l'aperçu instantané sur les CV légers."""
     if not _supports_section_move(template) or _main_column_lines(data) <= 20:
         return render_cv_html(template, data)
-    return _best_layout(template, data, base_name)[0]
+    aggressive = bool((data or {}).get("aggressive_fit"))
+    return _best_layout(template, data, base_name, aggressive=aggressive)[0]
 
 
 def render_html_cv_pdf_bytes(cv, base_name=None):
+    data = cv.data or {}
     return render_html_template_pdf_bytes(
         cv.template,
-        cv.data or {},
+        data,
         base_name=base_name or getattr(cv, "title", "cv") or "cv",
+        aggressive=bool(data.get("aggressive_fit")),
     )
+
+
+# ---------- Lettre de motivation : rendu accordé au modèle du CV ----------
+
+_LETTER_FALLBACK_PALETTE = {"accent": "#0f766e", "dark": "#1f2937"}
+
+_FRENCH_MONTHS = [
+    "janvier", "février", "mars", "avril", "mai", "juin",
+    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+]
+
+
+def _letter_palette(template):
+    """Palette de la lettre : celle du modèle du CV quand il a un rendu HTML,
+    pour que CV et lettre forment un dossier visuellement cohérent."""
+    try:
+        spec = _html_spec_for_template(template)
+        if spec:
+            palette = _readable_palette(spec["palette"])
+            return {
+                "accent": palette.get("accent") or _LETTER_FALLBACK_PALETTE["accent"],
+                "dark": palette.get("dark") or _LETTER_FALLBACK_PALETTE["dark"],
+            }
+    except Exception:
+        pass
+    return dict(_LETTER_FALLBACK_PALETTE)
+
+
+def _parse_cover_letter_text(text):
+    """Sépare la ligne « Objet : … » (si présente) du corps, et découpe le corps
+    en paragraphes sur les lignes vides. Robuste aux éditions manuelles."""
+    lines = str(text or "").replace("\r", "").strip().split("\n")
+    objet = ""
+    if lines and re.match(r"^\s*objet\s*:", lines[0], re.I):
+        objet = re.sub(r"^\s*objet\s*:\s*", "", lines[0], flags=re.I).strip()
+        lines = lines[1:]
+    body = "\n".join(lines).strip()
+    paragraphs = [re.sub(r"\s*\n\s*", " ", block).strip() for block in re.split(r"\n\s*\n", body) if block.strip()]
+    return objet, paragraphs
+
+
+def render_cover_letter_html(cv):
+    from django.utils import timezone
+
+    data = cv.data or {}
+    objet, paragraphs = _parse_cover_letter_text(cv.cover_letter)
+    full_name = " ".join(part for part in [_safe_text(data.get("first_name")), _safe_text(data.get("last_name"))] if part)
+    contact_items = [
+        item for item in [
+            _safe_text(data.get("phone")),
+            _safe_text(data.get("email")),
+            _safe_text(data.get("address")),
+        ] if item
+    ]
+    today = timezone.localdate()
+    city = _safe_text(data.get("address")).split(",")[0].strip()
+    date_value = f"le {today.day} {_FRENCH_MONTHS[today.month - 1]} {today.year}"
+    date_line = f"{city}, {date_value}" if city and len(city) <= 40 else date_value.capitalize()
+    return render_to_string(
+        "cvs/html_renderers/letter.html",
+        {
+            "palette": _letter_palette(cv.template),
+            "letter": {
+                "full_name": full_name or "Candidat",
+                "job_title": _safe_text(data.get("job_title")),
+                "contact_items": contact_items,
+                "date_line": date_line,
+                "objet": objet,
+                "paragraphs": paragraphs,
+            },
+        },
+    )
+
+
+def render_cover_letter_pdf_bytes(cv, base_name=None):
+    html = render_cover_letter_html(cv)
+    return _convert_html_to_pdf(html, base_name or f"lettre-motivation-{cv.pk}")
 
 
 def render_html_template_preview_png_bytes(template, data, base_name="preview"):

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: A4; margin: 20mm 20mm 18mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; font-family: "Helvetica Neue", Arial, sans-serif; color: #2f3133; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #ffffff; }
+
+    .head { border-bottom: 0.8mm solid {{ palette.accent }}; padding-bottom: 4mm; margin-bottom: 8mm; }
+    .name { margin: 0; font-size: 16pt; font-weight: 800; letter-spacing: .3pt; text-transform: uppercase; color: {{ palette.dark }}; }
+    .job { margin: 1mm 0 0; font-size: 10.5pt; font-weight: 600; color: {{ palette.accent }}; }
+    .contact { margin: 2mm 0 0; font-size: 9pt; color: #6b7075; }
+    .contact span + span::before { content: "  ·  "; color: {{ palette.accent }}; }
+
+    .date-line { text-align: right; font-size: 10pt; color: #4b5157; margin: 0 0 7mm; }
+    .objet { font-size: 10.5pt; margin: 0 0 6mm; color: {{ palette.dark }}; }
+    .objet strong { font-weight: 800; }
+
+    .body p { font-size: 10.5pt; line-height: 1.55; text-align: justify; margin: 0 0 4.5mm; }
+
+    .signature { margin-top: 10mm; text-align: right; }
+    .signature .sig-name { font-size: 11pt; font-weight: 700; color: {{ palette.dark }}; }
+  </style>
+</head>
+<body>
+  <header class="head">
+    <h1 class="name">{{ letter.full_name }}</h1>
+    {% if letter.job_title %}<p class="job">{{ letter.job_title }}</p>{% endif %}
+    {% if letter.contact_items %}
+      <p class="contact">{% for item in letter.contact_items %}<span>{{ item }}</span>{% endfor %}</p>
+    {% endif %}
+  </header>
+
+  <p class="date-line">{{ letter.date_line }}</p>
+
+  {% if letter.objet %}
+    <p class="objet"><strong>Objet :</strong> {{ letter.objet }}</p>
+  {% endif %}
+
+  <div class="body">
+    {% for paragraph in letter.paragraphs %}
+      <p>{{ paragraph }}</p>
+    {% endfor %}
+  </div>
+
+  <div class="signature">
+    <span class="sig-name">{{ letter.full_name }}</span>
+  </div>
+</body>
+</html>

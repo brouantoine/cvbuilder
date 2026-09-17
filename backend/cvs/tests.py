@@ -45,6 +45,7 @@ class CVGenerationAPITest(TestCase):
                 "last_name": "Kone",
                 "job_title": "Developpeuse web",
                 "email": "awa@example.com",
+                "photo_url": "https://example.com/photo.jpg",
                 "experiences": [],
                 "education": [],
                 "skills": ["React", "Django"],
@@ -65,7 +66,8 @@ class CVGenerationAPITest(TestCase):
         self.cv.refresh_from_db()
         self.assertTrue(self.cv.generated_file.name.endswith(".docx"))
         self.assertTrue(self.cv.generated_pdf.name.endswith(".pdf"))
-        _convert.assert_called_once()
+        # Source unique : le PDF vient du rendu HTML, le DOCX n'est jamais converti pour le produire.
+        _convert.assert_not_called()
 
         download_response = self.client.get(f"/api/cvs/{self.cv.id}/download/")
 
@@ -100,7 +102,8 @@ class CVGenerationAPITest(TestCase):
         cv.refresh_from_db()
         self.assertTrue(cv.generated_file.name.endswith(".docx"))
         self.assertTrue(cv.generated_pdf.name.endswith(".pdf"))
-        _convert.assert_called_once()
+        # Source unique : le PDF vient du rendu HTML, le DOCX n'est jamais converti pour le produire.
+        _convert.assert_not_called()
 
     def test_html_renderer_builds_template_html_from_cv_data(self):
         from cvs.renderers.html import render_cv_html
@@ -135,6 +138,9 @@ class CVGenerationAPITest(TestCase):
         convert.assert_not_called()
 
     def test_context_upload_accepts_missing_profile_photo(self):
+        self.cv.data = {**self.cv.data, "photo_url": ""}
+        self.cv.save(update_fields=["data"])
+
         response = self.client.post(
             f"/api/cvs/{self.cv.id}/context/",
             {"job_offer_text": "Offre test"},
@@ -245,7 +251,8 @@ class CVGenerationAPITest(TestCase):
         self.assertNotIn("You exceeded your current quota", response.data["detail"])
         request = urlopen.call_args.args[0]
         headers = {name.lower(): value for name, value in request.header_items()}
-        self.assertEqual(headers["user-agent"], "CVBuilder/1.0")
+        # User-Agent type navigateur : évite les blocages Cloudflare (erreur 1010) sur l'API Groq.
+        self.assertIn("Mozilla/5.0", headers["user-agent"])
         self.cv.refresh_from_db()
         self.assertIn("quota Groq", self.cv.ai_error)
 

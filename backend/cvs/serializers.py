@@ -22,6 +22,8 @@ class CVSerializer(serializers.ModelSerializer):
             "job_offer_url",
             "job_offer_text",
             "template_mode",
+            "is_reference",
+            "cover_letter",
             "ai_status",
             "ai_error",
             "ai_data",
@@ -35,6 +37,7 @@ class CVSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "status",
+            "is_reference",
             "source_file",
             "photo_file",
             "job_offer_file",
@@ -65,6 +68,8 @@ class CVListSerializer(serializers.ModelSerializer):
     template_name = serializers.CharField(source="template.name", read_only=True)
     template_detail = CVTemplateSerializer(source="template", read_only=True)
     has_active_access = serializers.SerializerMethodField()
+    has_job_offer = serializers.SerializerMethodField()
+    has_cover_letter = serializers.SerializerMethodField()
 
     class Meta:
         model = CV
@@ -76,6 +81,9 @@ class CVListSerializer(serializers.ModelSerializer):
             "title",
             "status",
             "data",
+            "is_reference",
+            "has_job_offer",
+            "has_cover_letter",
             "ai_status",
             "generated_file",
             "generated_pdf",
@@ -89,6 +97,12 @@ class CVListSerializer(serializers.ModelSerializer):
         from .services.access import has_active_access
 
         return has_active_access(obj.user, obj)
+
+    def get_has_job_offer(self, obj):
+        return bool((obj.job_offer_text or "").strip() or obj.job_offer_url or obj.job_offer_file)
+
+    def get_has_cover_letter(self, obj):
+        return bool((obj.cover_letter or "").strip())
 
 
 class CVContextSerializer(serializers.Serializer):

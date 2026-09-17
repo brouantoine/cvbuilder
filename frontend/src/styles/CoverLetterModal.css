@@ -1,0 +1,182 @@
+/* Modal lettre de motivation — mêmes codes visuels que le reste de l'app. */
+
+.letter-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  width: min(680px, calc(100vw - 2rem));
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  padding: 1.1rem 1.2rem 1.2rem;
+}
+
+.letter-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.letter-modal-head strong {
+  display: block;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.letter-modal-head span {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.letter-modal-close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.letter-modal-close:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.letter-modal-offer {
+  border: 1px solid var(--primary, #10b981);
+  border-radius: var(--radius, 10px);
+  background: var(--primary-tint, #ecfdf5);
+  padding: 0.5rem 0.7rem;
+}
+
+.letter-modal-offer summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary-deep, #047857);
+}
+
+.letter-modal-offer-text {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text, #1f2937);
+  white-space: pre-line;
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+.letter-modal-busy {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--primary-deep, #047857);
+  font-weight: 600;
+}
+
+.letter-modal-notice {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--primary-deep, #047857);
+}
+
+.letter-modal-text {
+  width: 100%;
+  resize: vertical;
+  min-height: 16rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius, 10px);
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg, #fafafa);
+}
+
+.letter-modal-instruction {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.letter-modal-instruction span {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.letter-modal-instruction input {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius, 10px);
+  font: inherit;
+  font-size: 0.84rem;
+  color: var(--text);
+}
+
+/* Barre d'actions : secondaires (Copier / Régénérer / Enregistrer) à gauche,
+   action principale (PDF) à droite, séparée du contenu par un filet. */
+.letter-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.letter-modal-actions-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.letter-modal-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.letter-modal-actions .letter-copied {
+  color: var(--primary-deep, #047857);
+  border-color: var(--primary, #10b981);
+  background: var(--primary-tint, #ecfdf5);
+}
+
+@media (max-width: 560px) {
+  .letter-modal-actions,
+  .letter-modal-actions-left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .letter-modal-actions .btn {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+/* Overlay propre au modal (au cas où TemplatePreviewModal.css n'est pas chargé). */
+.letter-modal ~ .modal-overlay,
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.5);
+}

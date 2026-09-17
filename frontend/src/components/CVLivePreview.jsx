@@ -1,9 +1,45 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { cvsApi } from "../api/client";
 
 // Dimensions d'une page A4 à 96 dpi (210mm × 297mm).
 const PAGE_WIDTH = 794;
 const PAGE_HEIGHT = 1123;
+
+// Le rendu d'un aperçu peut prendre plusieurs secondes côté serveur : une seule
+// requête à la fois, partagée entre toutes les instances du composant (rail
+// desktop + carte mobile). Si une nouvelle demande arrive pendant un rendu,
+// elle remplace la précédente en attente (« la plus récente gagne ») — on ne
+// sature plus jamais les connexions du navigateur avec une file d'aperçus.
+const previewFlight = { promise: null, key: "", next: null };
+
+function sharedPreview(key, body) {
+  if (previewFlight.promise && previewFlight.key === key) {
+    return previewFlight.promise;
+  }
+  if (previewFlight.promise) {
+    if (previewFlight.next && previewFlight.next.key === key) {
+      return previewFlight.next.promise;
+    }
+    let resolvers;
+    const promise = new Promise((resolve, reject) => {
+      resolvers = { resolve, reject };
+    });
+    previewFlight.next = { key, body, promise, resolvers };
+    return promise;
+  }
+  previewFlight.key = key;
+  previewFlight.promise = cvsApi.preview(body).finally(() => {
+    previewFlight.promise = null;
+    previewFlight.key = "";
+    const queued = previewFlight.next;
+    if (queued) {
+      previewFlight.next = null;
+      sharedPreview(queued.key, queued.body).then(queued.resolvers.resolve, queued.resolvers.reject);
+    }
+  });
+  return previewFlight.promise;
+}
 
 /**
  * Aperçu WYSIWYG : affiche dans une iframe le HTML rendu par le backend
@@ -25,8 +61,7 @@ export function CVLivePreview({ templateId, data }) {
     let cancelled = false;
     setLoading(true);
     const handle = setTimeout(() => {
-      cvsApi
-        .preview({ template: templateId, data })
+      sharedPreview(`${templateId}:${dataKey}`, { template: templateId, data })
         .then((res) => {
           if (cancelled) return;
           setHtml(res.html || "");
@@ -39,7 +74,7 @@ export function CVLivePreview({ templateId, data }) {
         .finally(() => {
           if (!cancelled) setLoading(false);
         });
-    }, 350);
+    }, 700);
     return () => {
       cancelled = true;
       clearTimeout(handle);
@@ -63,17 +98,25 @@ export function CVLivePreview({ templateId, data }) {
       {error ? (
         <p className="cv-live-preview-error">{error}</p>
       ) : (
-        <iframe
-          title="Aperçu du CV"
-          srcDoc={html}
-          className={`cv-live-preview-frame ${loading && !html ? "is-loading" : ""}`}
-          style={{
-            width: PAGE_WIDTH,
-            height: PAGE_HEIGHT,
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-          }}
-        />
+        <>
+          <iframe
+            title="Aperçu du CV"
+            srcDoc={html}
+            className={`cv-live-preview-frame ${loading ? "is-loading" : ""}`}
+            style={{
+              width: PAGE_WIDTH,
+              height: PAGE_HEIGHT,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+            }}
+          />
+          {loading && (
+            <div className="cv-live-preview-overlay">
+              <Loader2 className="cv-live-preview-spin" size={22} />
+              <span>{html ? "Mise à jour de l'aperçu…" : "Génération de l'aperçu…"}</span>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

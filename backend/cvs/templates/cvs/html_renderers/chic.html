@@ -34,7 +34,9 @@
     .side-skills li { font-size: 9pt; line-height: 1.3; color: #e7e9ec; margin-bottom: 1.3mm; padding-left: 4mm; position: relative; }
     .side-skills li::before { content: "\203A"; position: absolute; left: 0; color: {{ palette.on_dark }}; font-weight: 800; }
 
-    .atout-block { margin-bottom: 4mm; }
+    /* Blocs (sous-titre + contenu) nettement séparés les uns des autres,
+       pour distinguer Langues / Informatiques / Aptitudes au premier regard. */
+    .atout-block { margin-bottom: 7mm; }
     .atout-block h3 { margin: 0 0 2mm; font-size: 9pt; font-weight: 800; text-transform: uppercase; letter-spacing: .4pt; color: #ffffff; }
     .rated { margin-bottom: 2mm; }
     .rated .lbl { font-size: 9pt; color: #e7e9ec; margin-bottom: 1mm; }
@@ -66,10 +68,23 @@
     .tl-item::before { content: ""; position: absolute; left: -6mm; top: 1mm; width: 2.8mm; height: 2.8mm; border-radius: 50%; background: {{ palette.accent }}; box-shadow: 0 0 0 1mm #ffffff; }
     .tl-date { font-size: 9.5pt; font-weight: 800; color: #2f3133; }
     .tl-title { font-size: 11pt; font-weight: 800; color: #2f3133; margin: .5mm 0 0; text-transform: uppercase; letter-spacing: .2pt; }
+    /* Justification si le site n'est pas encore en ligne (ex. « Déploiement en cours »). */
+    .proj-note { margin: .3mm 0 0; font-size: 8.6pt; font-style: italic; color: {{ palette.muted }}; }
     .tl-org { font-size: 10pt; font-weight: 700; color: {{ palette.accent }}; margin: .3mm 0 0; }
     .tl-bullets { list-style: none; margin: 1.1mm 0 0; padding: 0; }
     .tl-bullets li { font-size: 10pt; line-height: 1.34; color: #404347; padding-left: 3.4mm; position: relative; margin-bottom: .5mm; }
     .tl-bullets li::before { content: "-"; position: absolute; left: 0; color: {{ palette.muted }}; }
+
+    /* Lien discret « Consulter » : jamais l'URL brute, toujours un mot cliquable. */
+    .consult-link { color: {{ palette.accent }}; font-weight: 700; font-size: 9pt; text-decoration: none; border-bottom: .3mm solid {{ palette.accent }}; white-space: nowrap; }
+
+    /* Badge PRIX uniquement (ex. « 3ᵉ Prix — Concours ») — jamais réutilisé pour
+       une certification ou un diplôme : le trophée signale exclusivement une
+       distinction/récompense obtenue. */
+    .award { display: flex; gap: 1.8mm; align-items: center; margin: 1.4mm 0 0; padding: 1mm 2.4mm; background: {{ palette.soft }}; border-radius: 2mm; width: fit-content; }
+    .award-icon { font-size: 9pt; line-height: 1; }
+    .award-label { color: {{ palette.accent }}; font-weight: 800; font-size: 9.3pt; }
+    .proj-sub { display: block; font-size: 9pt; color: {{ palette.muted }}; margin-top: .5mm; }
 
     .skills-list { list-style: none; margin: 0; padding: 0; columns: 1; }
     .skills-list li { font-size: 10pt; line-height: 1.4; color: #404347; padding-left: 5mm; position: relative; margin-bottom: .8mm; }
@@ -92,7 +107,7 @@
     .page.fit-2 .skills-list li { margin-bottom: .5mm; }
     .page.fit-2 .side-top { padding-top: 6mm; }
     .page.fit-2 .side h2 { margin-top: 3.5mm; margin-bottom: 2mm; }
-    .page.fit-2 .atout-block { margin-bottom: 3mm; }
+    .page.fit-2 .atout-block { margin-bottom: 5.6mm; }
     .page.fit-2 .identity li { margin-bottom: 1.4mm; }
 
     .page.fit-3 .main { padding: 7mm 9mm 5mm; }
@@ -105,7 +120,7 @@
     .page.fit-3 .skills-list li, .page.fit-3 .tl-bullets li { margin-bottom: .4mm; }
     .page.fit-3 .side-top { padding-top: 5mm; }
     .page.fit-3 .side h2 { margin-top: 3mm; margin-bottom: 1.8mm; }
-    .page.fit-3 .atout-block { margin-bottom: 2.4mm; }
+    .page.fit-3 .atout-block { margin-bottom: 4.6mm; }
     .page.fit-3 .identity li { margin-bottom: 1.2mm; }
     .page.fit-3 .rated { margin-bottom: 1.5mm; }
 
@@ -119,10 +134,13 @@
     .page.fit-4 .tl-title { font-size: 10pt; }
     .page.fit-4 .tl-date { font-size: 9pt; }
     .page.fit-4 .tl-org { font-size: 9.3pt; }
+    .page.fit-4 .award, .page.fit-5 .award, .page.fit-6 .award { padding: .7mm 1.8mm; margin-top: 1mm; }
+    .page.fit-4 .award-label, .page.fit-5 .award-label, .page.fit-6 .award-label { font-size: 8.6pt; }
+    .page.fit-4 .consult-link, .page.fit-5 .consult-link, .page.fit-6 .consult-link { font-size: 8.3pt; }
     .page.fit-4 .profile-text, .page.fit-4 .tl-bullets li, .page.fit-4 .skills-list li { font-size: 9.4pt; line-height: 1.24; margin-bottom: .3mm; }
     .page.fit-4 .side-top { padding-top: 4mm; }
     .page.fit-4 .side h2 { margin-top: 2.6mm; margin-bottom: 1.5mm; font-size: 10.5pt; }
-    .page.fit-4 .atout-block { margin-bottom: 2mm; }
+    .page.fit-4 .atout-block { margin-bottom: 3.6mm; }
     .page.fit-4 .identity li, .page.fit-4 .rated { margin-bottom: 1mm; }
     .page.fit-4 .side-skills li, .page.fit-4 .bullets li, .page.fit-4 .identity li { font-size: 8.6pt; }
 
@@ -138,7 +156,7 @@
     .page.fit-5 .avatar, .page.fit-5 .avatar-fallback { width: 38mm; height: 38mm; }
     .page.fit-5 .side-top { padding-top: 3.5mm; }
     .page.fit-5 .side h2 { margin-top: 2.2mm; margin-bottom: 1.3mm; font-size: 10pt; }
-    .page.fit-5 .atout-block { margin-bottom: 1.6mm; }
+    .page.fit-5 .atout-block { margin-bottom: 3mm; }
     .page.fit-5 .identity li, .page.fit-5 .rated { margin-bottom: .8mm; }
     .page.fit-5 .side-skills li, .page.fit-5 .bullets li, .page.fit-5 .identity li, .page.fit-5 .rated .lbl { font-size: 8.3pt; }
     .page.fit-5 .side-name { font-size: 14pt; }
@@ -155,7 +173,7 @@
     .page.fit-6 .avatar, .page.fit-6 .avatar-fallback { width: 34mm; height: 34mm; }
     .page.fit-6 .side-top { padding-top: 3mm; }
     .page.fit-6 .side h2 { margin-top: 1.8mm; margin-bottom: 1.1mm; font-size: 9.5pt; }
-    .page.fit-6 .atout-block { margin-bottom: 1.3mm; }
+    .page.fit-6 .atout-block { margin-bottom: 2.4mm; }
     .page.fit-6 .identity li, .page.fit-6 .rated { margin-bottom: .6mm; }
     .page.fit-6 .side-skills li, .page.fit-6 .bullets li, .page.fit-6 .identity li, .page.fit-6 .rated .lbl { font-size: 8pt; }
     .page.fit-6 .side-name { font-size: 13pt; }
@@ -199,15 +217,15 @@
       {% if cv.aptitudes %}
       <div class="atout-block">
         <h3>Aptitudes</h3>
-        <ul class="bullets">{% for item in cv.aptitudes %}<li>{{ item }}</li>{% endfor %}</ul>
+        <ul class="bullets">{% for item in cv.aptitudes %}<li>{{ item.label|default:item }}</li>{% endfor %}</ul>
       </div>
       {% endif %}
       {% endif %}
 
-      {% if cv.moved_section and cv.moved_items %}
-      <h2>{{ cv.moved_title }}</h2>
-      <ul class="side-skills">{% for item in cv.moved_items %}<li>{{ item }}</li>{% endfor %}</ul>
-      {% endif %}
+      {% for moved in cv.moved_sections %}
+      <h2>{{ moved.title }}</h2>
+      <ul class="side-skills">{% for item in moved.items %}<li>{{ item.label|default:item }}</li>{% endfor %}</ul>
+      {% endfor %}
 
       {% if cv.hobbies %}
       <h2>Hobbies</h2>
@@ -257,26 +275,80 @@
       </section>
       {% endif %}
 
-      {% if cv.projects and cv.moved_section != 'projects' %}
+      {% if cv.projects %}
       <section class="sec">
         <h2>Projets réalisés</h2>
-        <ul class="skills-list">{% for project in cv.projects %}<li>{{ project }}</li>{% endfor %}</ul>
+        <div class="timeline">
+          {% for project in cv.projects %}
+          <div class="tl-item">
+            {% if project.period %}<div class="tl-date">{{ project.period }}</div>{% endif %}
+            <p class="tl-title">{{ project.title }}</p>
+            {% if project.subtitle %}<p class="tl-org">{{ project.subtitle }}</p>{% endif %}
+            {% if project.link %}<a class="consult-link" href="{{ project.link }}" target="_blank" rel="noopener">Consulter le site &#8599;</a>{% endif %}
+            {% if project.link_note %}<p class="proj-note">{{ project.link_note }}</p>{% endif %}
+            {% if project.missions %}<ul class="tl-bullets">{% for mission in project.missions %}<li>{{ mission }}</li>{% endfor %}</ul>{% endif %}
+            {% if project.award %}
+            <p class="award">
+              <span class="award-icon">&#127942;</span>
+              <span class="award-label">{{ project.award }}</span>
+              {% if project.award_link %}<a class="consult-link" href="{{ project.award_link }}" target="_blank" rel="noopener">Consulter</a>{% endif %}
+            </p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
       </section>
       {% endif %}
 
-      {% if cv.skills and cv.moved_section != 'skills' %}
+      {% if cv.legacy_projects %}
+      <section class="sec">
+        <h2>Projets réalisés</h2>
+        <ul class="skills-list">{% for item in cv.legacy_projects %}<li>{{ item.label|default:item }}{% if item.subtitle %} — {{ item.subtitle }}{% endif %}{% if item.link %} <a class="consult-link" href="{{ item.link }}" target="_blank" rel="noopener">Consulter</a>{% endif %}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+
+      {% if cv.skills %}
       <section class="sec">
         <h2>Compétences</h2>
         <ul class="skills-list">{% for skill in cv.skills %}<li>{{ skill }}</li>{% endfor %}</ul>
       </section>
       {% endif %}
 
-      {% if cv.certifications and cv.moved_section != 'certifications' %}
+      {% if cv.certifications %}
       <section class="sec">
         <h2>Certifications</h2>
-        <ul class="skills-list">{% for cert in cv.certifications %}<li>{{ cert }}</li>{% endfor %}</ul>
+        <ul class="skills-list">
+          {% for cert in cv.certifications %}
+          <li>
+            {{ cert.label|default:cert }}
+            {% if cert.link %}<a class="consult-link" href="{{ cert.link }}" target="_blank" rel="noopener">Consulter</a>{% endif %}
+            {% if cert.subtitle %}<div class="proj-sub">{{ cert.subtitle }}</div>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
       </section>
       {% endif %}
+
+      {% if cv.achievements %}
+      <section class="sec">
+        <h2>Réalisations</h2>
+        <ul class="skills-list">{% for item in cv.achievements %}<li>{{ item.label|default:item }}{% if item.link %} <a class="consult-link" href="{{ item.link }}" target="_blank" rel="noopener">Consulter</a>{% endif %}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+
+      {% if cv.references %}
+      <section class="sec">
+        <h2>Références</h2>
+        <ul class="skills-list">{% for item in cv.references %}<li>{{ item.label|default:item }}{% if item.link %} <a class="consult-link" href="{{ item.link }}" target="_blank" rel="noopener">Consulter</a>{% endif %}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+
+      {% for section in cv.other_extra_sections %}
+      <section class="sec">
+        <h2>{{ section.title }}</h2>
+        <ul class="skills-list">{% for item in section.items %}<li>{{ item.label|default:item }}{% if item.link %} <a class="consult-link" href="{{ item.link }}" target="_blank" rel="noopener">Consulter</a>{% endif %}</li>{% endfor %}</ul>
+      </section>
+      {% endfor %}
     </main>
   </section>
 </body>

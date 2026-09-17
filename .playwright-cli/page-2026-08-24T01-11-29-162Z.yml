@@ -1,0 +1,69 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "CVBuilder" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e7]:
+        - link "Mes CV" [ref=e73] [cursor=pointer]:
+          - /url: /dashboard
+        - generic [ref=e74]: codex_ui_check
+        - button "Déconnexion" [ref=e75] [cursor=pointer]
+  - main [ref=e10]:
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - paragraph [ref=e108]: Mon CV
+          - heading "Créer mon CV" [level=1] [ref=e109]
+          - generic [ref=e110]: Suis les étapes, ton CV se construit en direct.
+        - link "Mes CV" [ref=e111] [cursor=pointer]:
+          - /url: /dashboard
+      - navigation "Étapes du CV" [ref=e112]:
+        - button "1 Import" [ref=e113] [cursor=pointer]:
+          - generic [ref=e114]: "1"
+          - text: Import
+        - button "2 Analyse" [ref=e115] [cursor=pointer]:
+          - generic [ref=e116]: "2"
+          - text: Analyse
+        - button "3 Validation" [ref=e117] [cursor=pointer]:
+          - generic [ref=e118]: "3"
+          - text: Validation
+        - button "4 Modèle" [ref=e119] [cursor=pointer]:
+          - generic [ref=e120]: "4"
+          - text: Modèle
+        - button "5 Édition" [ref=e121] [cursor=pointer]:
+          - generic [ref=e122]: "5"
+          - text: Édition
+        - button "6 Export" [ref=e123] [cursor=pointer]:
+          - generic [ref=e124]: "6"
+          - text: Export
+      - generic [ref=e125]:
+        - main [ref=e126]:
+          - generic [ref=e127]:
+            - paragraph [ref=e128]: Étape 1
+            - heading "Par où commencer ?" [level=2] [ref=e129]
+            - paragraph [ref=e130]: Importe un PDF pour remplir automatiquement, ou pars de zéro. Une photo est obligatoire.
+            - generic "Méthode de création" [ref=e131]:
+              - button "Import PDF" [ref=e132] [cursor=pointer]
+              - button "Saisie manuelle" [ref=e133] [cursor=pointer]
+              - button "Assistant" [ref=e134] [cursor=pointer]
+            - generic [ref=e137]:
+              - generic [ref=e138]: Titre du CV
+              - textbox "Titre du CV" [ref=e139]: Mon CV
+            - generic [ref=e140]:
+              - generic [ref=e141] [cursor=pointer]:
+                - generic [ref=e142]: CV PDF
+                - strong [ref=e143]: Aucun fichier choisi
+                - generic [ref=e144]: PDF uniquement, 5 MB maximum
+                - button "CV PDF Aucun fichier choisi PDF uniquement, 5 MB maximum" [ref=e145]
+              - generic [ref=e146] [cursor=pointer]:
+                - generic [ref=e147]: Photo de profil *
+                - strong [ref=e148]: Obligatoire
+                - generic [ref=e149]: Obligatoire. JPG, PNG ou WebP — recadrée automatiquement en photo CV.
+                - button "Photo de profil * Obligatoire Obligatoire. JPG, PNG ou WebP — recadrée automatiquement en photo CV." [ref=e150]
+          - generic [ref=e151]:
+            - button "Retour" [disabled] [ref=e152]
+            - button "Continuer" [ref=e153] [cursor=pointer]
+        - complementary [ref=e154]:
+          - generic [ref=e155]:
+            - strong [ref=e156]: Préparation du CV
+            - generic [ref=e157]: L'aperçu du design apparaîtra après le choix du modèle.

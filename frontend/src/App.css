@@ -256,6 +256,19 @@ textarea:focus-visible {
   width: 100%;
 }
 
+/* CTA « Adapter » : bouton pleine largeur, bien visible, icône + texte centrés. */
+.offer-adapt-cta {
+  width: 100%;
+  min-height: 50px;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.28);
+}
+
+.offer-adapt-cta:hover:not(:disabled) {
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.34);
+}
+
 .btn-lg {
   min-height: 54px;
   padding: 0 1.7rem;
@@ -273,6 +286,23 @@ textarea:focus-visible {
   font-size: 0.9rem;
   color: var(--text-soft);
   font-weight: 650;
+}
+
+.field-hint {
+  margin: -0.25rem 0 0.45rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.form-group.lines-field {
+  padding: 0.7rem 0.8rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.form-group.lines-field label {
+  margin-bottom: 0.2rem;
 }
 
 .form-group input,
@@ -605,3 +635,58 @@ textarea:focus-visible {
     font-size: 0.82rem;
   }
 }
+
+/* ---------- Chargement global (barre + pastille, à chaque requête) ---------- */
+.global-loader {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 2000;
+  pointer-events: none;
+  /* Apparition différée : invisible pour les réponses < 250 ms (anti-clignotement). */
+  opacity: 0;
+  animation: global-loader-appear 0.01s linear 250ms forwards;
+}
+
+@keyframes global-loader-appear {
+  to { opacity: 1; }
+}
+
+.global-loader-bar {
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--primary, #10b981), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: global-loader-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes global-loader-slide {
+  0% { background-position: -40% 0; }
+  100% { background-position: 140% 0; }
+}
+
+.global-loader-pill {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--text, #1f2937);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.global-loader-spin { animation: global-loader-rotate 0.9s linear infinite; }
+
+@keyframes global-loader-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* Icônes Lucide dans les boutons et libellés : alignement propre. */
+.btn svg { flex-shrink: 0; vertical-align: -3px; margin-right: 6px; }
+.icon-inline { vertical-align: -3px; margin-right: 6px; }

@@ -274,6 +274,7 @@ def _add_education(container, data, style):
 
 def _add_skills(container, data, style):
     skills = _clean_items(data.get("skills"))
+    tools = _clean_items(data.get("tools"))
     if not skills:
         return
     _add_heading(container, SECTION_LABELS["skills"], style)
@@ -407,6 +408,7 @@ def _formatted_context(data):
     education = _clean_items(data.get("education"))
     languages = _clean_items(data.get("languages"))
     skills = _clean_items(data.get("skills"))
+    tools = _clean_items(data.get("tools"))
     hobbies = _clean_items(data.get("hobbies"))
 
     def exp_text(exp):
@@ -433,11 +435,13 @@ def _formatted_context(data):
         "experiences": experiences,
         "education": education,
         "skills": skills,
+        "tools": tools,
         "languages": languages,
         "hobbies": hobbies,
         "experiences_text": "\n\n".join(exp_text(exp) for exp in experiences),
         "education_text": "\n\n".join(edu_text(edu) for edu in education),
         "skills_text": " • ".join(skills),
+        "tools_text": " • ".join(tools),
         "languages_text": "\n".join(" - ".join([part for part in [_safe_text(item.get("language")), _safe_text(item.get("level"))] if part]) for item in languages),
         "hobbies_text": ", ".join(hobbies),
     })
@@ -576,7 +580,7 @@ def _gallery_cv_data(data):
         "education": education,
         "skills": _clean_items(data.get("skills"))[:8] or ["Compétence clé", "Organisation", "Communication"],
         "languages": [item for item in languages if item] or ["Français - Courant"],
-        "tools": section_items("outil", "logiciel", fallback=_clean_items(data.get("skills"))[3:8] or ["Pack Office"]),
+        "tools": _clean_items(data.get("tools")) or section_items("informatique", "outil", "logiciel"),
         "achievements": section_items("réalisation", "realisation", "projet", fallback=["Résultat ou projet important à valoriser."]),
         "certifications": section_items("certification", "certificat", fallback=["Certification ou formation complémentaire."]),
         "references": section_items("référence", "reference", fallback=["Références disponibles sur demande."]),

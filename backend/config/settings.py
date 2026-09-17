@@ -238,6 +238,14 @@ GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 # Quota tokens/minute du palier Groq (gratuit = 8000). On garde une marge.
 # Relever cette valeur après passage au palier Dev de Groq.
 GROQ_TPM_LIMIT = int(os.getenv("GROQ_TPM_LIMIT", "7600"))
+# Modèle vision (lecture des captures d'écran d'offres) — dispo sur le palier gratuit Groq.
+GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
+
+# OpenRouter : passerelle unique (facturation par crédit prépayé) vers Gemini,
+# Claude, GPT, etc. Utilisé pour AI_PROVIDER=openrouter — cf. cv-ai-extraction
+# pour le comparatif qui a mené à ce choix (rapport qualité/prix sur l'extraction).
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
 
 OPENAI_REQUEST_TIMEOUT = int(os.getenv("OPENAI_REQUEST_TIMEOUT", "60"))
 CV_OCR_LANGUAGES = os.getenv("CV_OCR_LANGUAGES", "fra+eng")
@@ -253,7 +261,13 @@ PAYSTACK_CALLBACK_URL = os.getenv(
     f"{FRONTEND_URL}/dashboard" if FRONTEND_URL else "http://localhost:5173/dashboard",
 )
 PAYSTACK_SUBUNIT_MULTIPLIER = int(os.getenv("PAYSTACK_SUBUNIT_MULTIPLIER", "1"))
-PAYMENTS_ENFORCED = os.getenv("PAYMENTS_ENFORCED", "false" if DEBUG else "true").lower() == "true"
+# ⚠️ PAIEMENT TEMPORAIREMENT DÉSACTIVÉ : tout est gratuit pour le moment, partout
+# (local ET production, quel que soit l'environnement). Tout le flow Paystack
+# (endpoints, webhook, plans, UI) reste en place mais n'est pas appliqué.
+# POUR RÉACTIVER LE PAIEMENT : supprimer la ligne « PAYMENTS_ENFORCED = False »
+# et décommenter la ligne d'origine ci-dessous.
+# PAYMENTS_ENFORCED = os.getenv("PAYMENTS_ENFORCED", "false" if DEBUG else "true").lower() == "true"
+PAYMENTS_ENFORCED = False
 
 # Génération PDF
 LIBREOFFICE_BINARY = os.getenv("LIBREOFFICE_BINARY", "soffice")

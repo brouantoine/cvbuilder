@@ -1,5 +1,6 @@
 export function Input({
   label,
+  hint,
   type = "text",
   name,
   value,
@@ -17,6 +18,7 @@ export function Input({
           {required && " *"}
         </label>
       )}
+      {hint && <p className="field-hint">{hint}</p>}
       <input
         id={name}
         name={name}

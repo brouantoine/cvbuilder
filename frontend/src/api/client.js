@@ -75,8 +75,21 @@ async function authedFetch(url, fetchOptions, baseHeaders, auth, endpoint) {
   return res;
 }
 
+// Chargement global : chaque requête non « silencieuse » alimente le compteur
+// (barre + pastille visibles partout). Import paresseux pour éviter un cycle.
+async function withGlobalLoading(silent, run) {
+  if (silent) return run();
+  const { useLoadingStore } = await import("../stores/loadingStore");
+  useLoadingStore.getState().start();
+  try {
+    return await run();
+  } finally {
+    useLoadingStore.getState().stop();
+  }
+}
+
 export async function api(endpoint, options = {}) {
-  const { auth = true, headers: optionHeaders = {}, ...fetchOptions } = options;
+  const { auth = true, silent = false, headers: optionHeaders = {}, ...fetchOptions } = options;
   const url = endpoint.startsWith("http") ? endpoint : `${BASE}${endpoint}`;
   const isFormData = fetchOptions.body instanceof FormData;
   const headers = {
@@ -84,13 +97,15 @@ export async function api(endpoint, options = {}) {
     ...optionHeaders,
   };
 
-  const res = await authedFetch(url, fetchOptions, headers, auth, endpoint);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    if (res.status === 401) notifyUnauthorized(endpoint);
-    throw { status: res.status, ...data };
-  }
-  return data;
+  return withGlobalLoading(silent, async () => {
+    const res = await authedFetch(url, fetchOptions, headers, auth, endpoint);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 401) notifyUnauthorized(endpoint);
+      throw { status: res.status, ...data };
+    }
+    return data;
+  });
 }
 
 function filenameFromDisposition(disposition) {
@@ -101,21 +116,23 @@ function filenameFromDisposition(disposition) {
 }
 
 export async function apiBlob(endpoint, options = {}) {
-  const { auth = true, headers: optionHeaders = {}, ...fetchOptions } = options;
+  const { auth = true, silent = false, headers: optionHeaders = {}, ...fetchOptions } = options;
   const url = endpoint.startsWith("http") ? endpoint : `${BASE}${endpoint}`;
   const headers = { ...optionHeaders };
 
-  const res = await authedFetch(url, fetchOptions, headers, auth, endpoint);
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    if (res.status === 401) notifyUnauthorized(endpoint);
-    throw { status: res.status, ...data };
-  }
+  return withGlobalLoading(silent, async () => {
+    const res = await authedFetch(url, fetchOptions, headers, auth, endpoint);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) notifyUnauthorized(endpoint);
+      throw { status: res.status, ...data };
+    }
 
-  return {
-    blob: await res.blob(),
-    filename: filenameFromDisposition(res.headers.get("content-disposition") || ""),
-  };
+    return {
+      blob: await res.blob(),
+      filename: filenameFromDisposition(res.headers.get("content-disposition") || ""),
+    };
+  });
 }
 
 // Auth
@@ -141,13 +158,22 @@ export const cvsApi = {
   remove: (id) => api(`/api/cvs/${id}/`, { method: "DELETE" }),
   uploadContext: (id, body) => api(`/api/cvs/${id}/context/`, { method: "POST", body }),
   improve: (id, body = {}) => api(`/api/cvs/${id}/ai/improve/`, { method: "POST", body: JSON.stringify(body) }),
+  adaptPreview: (id) => api(`/api/cvs/${id}/adapt/`, { method: "POST" }),
+  adaptApply: (id, adaptedData) =>
+    api(`/api/cvs/${id}/adapt/apply/`, { method: "POST", body: JSON.stringify({ adapted_data: adaptedData }) }),
   generate: (id) => api(`/api/cvs/${id}/generate/`, { method: "POST" }),
-  preview: (body) => api("/api/cvs/preview/", { method: "POST", body: JSON.stringify(body) }),
+  // silent : l'aperçu live et le chat ont leurs propres indicateurs de chargement.
+  preview: (body) => api("/api/cvs/preview/", { method: "POST", body: JSON.stringify(body), silent: true }),
+  assistantChat: (messages) => api("/api/cvs/assistant/chat/", { method: "POST", body: JSON.stringify({ messages }), silent: true }),
+  assistantFinalize: (messages) => api("/api/cvs/assistant/finalize/", { method: "POST", body: JSON.stringify({ messages }) }),
   rewrite: (body) => api("/api/cvs/rewrite/", { method: "POST", body: JSON.stringify(body) }),
   writeProfile: (body) => api("/api/cvs/profile/", { method: "POST", body: JSON.stringify(body) }),
   correct: (body) => api("/api/cvs/correct/", { method: "POST", body: JSON.stringify(body) }),
   duplicate: (id) => api(`/api/cvs/${id}/duplicate/`, { method: "POST" }),
   download: (id, format = "pdf") => apiBlob(`/api/cvs/${id}/download/?file=${format}`),
+  setReference: (id) => api(`/api/cvs/${id}/reference/`, { method: "POST" }),
+  writeCoverLetter: (id, body = {}) => api(`/api/cvs/${id}/cover-letter/`, { method: "POST", body: JSON.stringify(body) }),
+  downloadCoverLetter: (id) => apiBlob(`/api/cvs/${id}/cover-letter/download/`),
   plans: (cvId) => api(`/api/cvs/plans/${cvId ? `?cv=${cvId}` : ""}`),
 };
 

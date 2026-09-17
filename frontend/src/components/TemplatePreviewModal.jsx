@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CVPreview } from "./CVPreview";
 import "../styles/TemplatePreviewModal.css";
@@ -46,7 +47,7 @@ export function TemplatePreviewModal({ template, isOpen, onClose }) {
               title="Fermer"
               aria-label="Fermer"
             >
-              ✕
+              <X size={18} />
             </button>
           </div>
         </div>

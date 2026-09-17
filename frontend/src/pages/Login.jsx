@@ -23,7 +23,7 @@ export function Login() {
   return (
     <div className="auth-page">
       <form className="auth-form" onSubmit={handleSubmit}>
-        <h1>Bon retour 👋</h1>
+        <h1>Bon retour</h1>
         <p className="auth-intro">Connecte-toi pour retrouver tes CV.</p>
         {error && <p className="form-error global">{error}</p>}
         <Input

@@ -1,0 +1,174 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "CVBuilder" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e7]:
+        - link "Mes CV" [ref=e73] [cursor=pointer]:
+          - /url: /dashboard
+        - generic [ref=e74]: codex_ui_check
+        - button "Déconnexion" [ref=e75] [cursor=pointer]
+  - main [ref=e10]:
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - paragraph [ref=e108]: Mon CV
+          - heading "Créer mon CV" [level=1] [ref=e109]
+          - generic [ref=e110]: Suis les étapes, ton CV se construit en direct.
+        - link "Mes CV" [ref=e111] [cursor=pointer]:
+          - /url: /dashboard
+      - navigation "Étapes du CV" [ref=e112]:
+        - button "1 Import" [ref=e113] [cursor=pointer]:
+          - generic [ref=e114]: "1"
+          - text: Import
+        - button "2 Analyse" [ref=e115] [cursor=pointer]:
+          - generic [ref=e116]: "2"
+          - text: Analyse
+        - button "3 Validation" [ref=e117] [cursor=pointer]:
+          - generic [ref=e118]: "3"
+          - text: Validation
+        - button "4 Modèle" [ref=e119] [cursor=pointer]:
+          - generic [ref=e120]: "4"
+          - text: Modèle
+        - button "5 Édition" [active] [ref=e121] [cursor=pointer]:
+          - generic [ref=e122]: "5"
+          - text: Édition
+        - button "6 Export" [ref=e123] [cursor=pointer]:
+          - generic [ref=e124]: "6"
+          - text: Export
+      - generic [ref=e125]:
+        - main [ref=e126]:
+          - generic [ref=e158]:
+            - paragraph [ref=e159]: Étape 4
+            - heading "Complète et corrige" [level=2] [ref=e160]
+            - paragraph [ref=e161]: Remplis tes infos. L'IA peut rédiger ton profil et corriger les fautes.
+            - group [ref=e162]:
+              - generic "Adapter à une offre (optionnel)" [ref=e163] [cursor=pointer]
+            - generic [ref=e168]:
+              - button "Corriger tout le CV" [ref=e169] [cursor=pointer]
+              - generic [ref=e173]: "Fautes, accents, périodes (ex : « 2025 À 2026 » → « 2025 - 2026 »). Rien n'est supprimé."
+            - generic [ref=e174]:
+              - generic [ref=e175]:
+                - generic [ref=e176]: Prénom
+                - textbox "Prénom" [ref=e177]
+              - generic [ref=e178]:
+                - generic [ref=e179]: Nom
+                - textbox "Nom" [ref=e180]
+            - generic [ref=e181]:
+              - generic [ref=e182]: Poste ciblé
+              - textbox "Poste ciblé" [ref=e183]
+            - generic [ref=e184]:
+              - generic [ref=e185]:
+                - generic [ref=e186]: Téléphone
+                - textbox "Téléphone" [ref=e187]
+              - generic [ref=e188]:
+                - generic [ref=e189]: Email
+                - textbox "Email" [ref=e190]
+            - generic [ref=e191]:
+              - generic [ref=e192]: Ville / adresse
+              - textbox "Ville / adresse" [ref=e193]
+            - generic [ref=e194]:
+              - generic [ref=e195]: LinkedIn
+              - textbox "LinkedIn" [ref=e196]
+            - generic [ref=e197]:
+              - generic [ref=e198]:
+                - generic [ref=e199]: GitHub
+                - textbox "GitHub" [ref=e200]
+              - generic [ref=e201]:
+                - generic [ref=e202]: Portfolio
+                - textbox "Portfolio" [ref=e203]
+            - generic [ref=e204]:
+              - generic [ref=e205]:
+                - generic [ref=e206]: Profil
+                - button "Rédiger le profil" [ref=e207] [cursor=pointer]
+              - textbox "Profil" [ref=e211]
+            - generic [ref=e212]:
+              - generic [ref=e213]:
+                - heading "Expériences" [level=3] [ref=e214]
+                - button "Ajouter" [ref=e215] [cursor=pointer]
+              - article [ref=e216]:
+                - generic [ref=e217]:
+                  - strong [ref=e218]: Expérience 1
+                  - button "Retirer" [ref=e219] [cursor=pointer]
+                - generic [ref=e220]:
+                  - generic [ref=e221]: Poste
+                  - paragraph [ref=e222]: L'intitulé exact de ton poste.
+                  - textbox [ref=e223]
+                - generic [ref=e224]:
+                  - generic [ref=e225]: Entreprise
+                  - textbox [ref=e226]
+                - generic [ref=e227]:
+                  - generic [ref=e228]:
+                    - generic [ref=e229]: Lieu
+                    - textbox [ref=e230]
+                  - generic [ref=e231]:
+                    - generic [ref=e232]: Période
+                    - paragraph [ref=e233]: "Ex : Jan. 2024 – Aujourd'hui"
+                    - textbox [ref=e234]
+                - generic [ref=e235]:
+                  - generic [ref=e236]: Missions
+                  - paragraph [ref=e237]: "Ce que tu as fait au quotidien : une action par ligne, appuie sur Entrée pour passer à la suivante."
+                  - textbox [ref=e238]
+            - generic [ref=e239]:
+              - generic [ref=e240]:
+                - heading "Formation" [level=3] [ref=e241]
+                - button "Ajouter" [ref=e242] [cursor=pointer]
+              - article [ref=e243]:
+                - generic [ref=e244]:
+                  - strong [ref=e245]: Formation 1
+                  - button "Retirer" [ref=e246] [cursor=pointer]
+                - generic [ref=e247]:
+                  - generic [ref=e248]: Diplôme
+                  - textbox [ref=e249]
+                - generic [ref=e250]:
+                  - generic [ref=e251]: Établissement
+                  - textbox [ref=e252]
+                - generic [ref=e253]:
+                  - generic [ref=e254]:
+                    - generic [ref=e255]: Lieu
+                    - textbox [ref=e256]
+                  - generic [ref=e257]:
+                    - generic [ref=e258]: Période
+                    - textbox [ref=e259]
+            - generic [ref=e260]:
+              - generic [ref=e261]:
+                - heading "Projets réalisés" [level=3] [ref=e262]
+                - button "Ajouter" [ref=e263] [cursor=pointer]
+              - paragraph [ref=e264]: Un projet perso, une startup, une réalisation notable — avec, si tu en as une, la distinction ou le prix obtenu.
+            - generic [ref=e265]:
+              - generic [ref=e266]:
+                - generic [ref=e267]: Compétences
+                - paragraph [ref=e268]: Tes savoir-faire métier, une compétence par ligne.
+                - 'textbox "Ex : Gestion de projet Communication Analyse de données" [ref=e269]':
+                  - /placeholder: "Ex : Gestion de projet\nCommunication\nAnalyse de données"
+              - generic [ref=e270]:
+                - generic [ref=e271]: Informatique et outils
+                - paragraph [ref=e272]: Les logiciels, technologies et outils que tu maîtrises, un par ligne.
+                - 'textbox "Ex : Microsoft Excel Django PostgreSQL" [ref=e273]':
+                  - /placeholder: "Ex : Microsoft Excel\nDjango\nPostgreSQL"
+            - generic [ref=e275]:
+              - generic [ref=e276]: Loisirs
+              - paragraph [ref=e277]: Un loisir par ligne.
+              - textbox [ref=e278]
+            - generic [ref=e279]:
+              - generic [ref=e280]:
+                - heading "Langues" [level=3] [ref=e281]
+                - button "Ajouter" [ref=e282] [cursor=pointer]
+              - article [ref=e283]:
+                - generic [ref=e284]:
+                  - generic [ref=e285]: Langue
+                  - textbox [ref=e286]
+                - generic [ref=e287]:
+                  - generic [ref=e288]: Niveau
+                  - textbox [ref=e289]
+                - button "Retirer" [ref=e290] [cursor=pointer]
+            - generic [ref=e292]:
+              - heading "Sections personnalisées" [level=3] [ref=e293]
+              - button "Ajouter une section" [ref=e294] [cursor=pointer]
+          - generic [ref=e151]:
+            - button "Retour" [ref=e152] [cursor=pointer]
+            - button "Continuer" [ref=e153] [cursor=pointer]
+        - complementary [ref=e154]:
+          - generic [ref=e155]:
+            - strong [ref=e156]: Préparation du CV
+            - generic [ref=e157]: L'aperçu du design apparaîtra après le choix du modèle.

@@ -1,8 +1,14 @@
 from django.urls import path
 
 from .views import (
+    CVAdaptApplyView,
+    CVAdaptPreviewView,
     CVAIImproveView,
+    CVAssistantChatView,
+    CVAssistantFinalizeView,
     CVContextUploadView,
+    CVCoverLetterDownloadView,
+    CVCoverLetterView,
     CVDetailView,
     CVDownloadView,
     CVDuplicateView,
@@ -13,6 +19,7 @@ from .views import (
     CVPreviewView,
     CVProfileView,
     CVRewriteView,
+    CVSetReferenceView,
     PaymentInitializeView,
     PaymentVerifyView,
     PaystackWebhookView,
@@ -21,6 +28,8 @@ from .views import (
 urlpatterns = [
     path("", CVListCreateView.as_view(), name="cv-list-create"),
     path("preview/", CVPreviewView.as_view(), name="cv-preview"),
+    path("assistant/chat/", CVAssistantChatView.as_view(), name="cv-assistant-chat"),
+    path("assistant/finalize/", CVAssistantFinalizeView.as_view(), name="cv-assistant-finalize"),
     path("rewrite/", CVRewriteView.as_view(), name="cv-rewrite"),
     path("profile/", CVProfileView.as_view(), name="cv-profile"),
     path("correct/", CVCorrectView.as_view(), name="cv-correct"),
@@ -31,6 +40,11 @@ urlpatterns = [
     path("<int:pk>/", CVDetailView.as_view(), name="cv-detail"),
     path("<int:pk>/context/", CVContextUploadView.as_view(), name="cv-context"),
     path("<int:pk>/ai/improve/", CVAIImproveView.as_view(), name="cv-ai-improve"),
+    path("<int:pk>/adapt/", CVAdaptPreviewView.as_view(), name="cv-adapt-preview"),
+    path("<int:pk>/adapt/apply/", CVAdaptApplyView.as_view(), name="cv-adapt-apply"),
+    path("<int:pk>/reference/", CVSetReferenceView.as_view(), name="cv-set-reference"),
+    path("<int:pk>/cover-letter/", CVCoverLetterView.as_view(), name="cv-cover-letter"),
+    path("<int:pk>/cover-letter/download/", CVCoverLetterDownloadView.as_view(), name="cv-cover-letter-download"),
     path("<int:pk>/generate/", CVGenerateView.as_view(), name="cv-generate"),
     path("<int:pk>/duplicate/", CVDuplicateView.as_view(), name="cv-duplicate"),
     path("<int:pk>/download/", CVDownloadView.as_view(), name="cv-download"),

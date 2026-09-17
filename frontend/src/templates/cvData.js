@@ -33,6 +33,16 @@ export const defaultEducation = () => ({
 });
 
 export const defaultLanguage = () => ({ language: "", level: "" });
+export const defaultProject = () => ({
+  title: "",
+  subtitle: "",
+  period: "",
+  missions: [""],
+  link: "",
+  link_note: "",
+  award: "",
+  award_link: "",
+});
 export const defaultExtraSection = () => ({ title: "", items: [""] });
 
 export function createDefaultCVData() {
@@ -52,11 +62,14 @@ export function createDefaultCVData() {
     experiences: [defaultExperience()],
     education: [defaultEducation()],
     skills: [""],
+    tools: [""],
     languages: [defaultLanguage()],
     hobbies: [""],
+    projects: [],
     extra_sections: [],
     enabled_sections: { ...DEFAULT_ENABLED_SECTIONS },
     section_order: [...DEFAULT_SECTION_ORDER],
+    aggressive_fit: false,
   };
 }
 
@@ -103,12 +116,25 @@ export const sampleCVData = {
       period: "2019 - 2021",
     },
   ],
-  skills: ["Gestion de projet", "Communication", "Analyse de données", "React", "Notion"],
+  skills: ["Gestion de projet", "Communication", "Analyse de données", "Résolution de problèmes"],
+  tools: ["Microsoft 365", "Notion", "Trello"],
   languages: [
     { language: "Français", level: "Courant" },
     { language: "Anglais", level: "Intermédiaire" },
   ],
   hobbies: ["Lecture", "Design", "Bénévolat"],
+  projects: [
+    {
+      title: "Studio Nova Digital — Fondatrice",
+      subtitle: "Agence de communication digitale pour PME",
+      period: "2022 - Aujourd'hui",
+      missions: [
+        "Lancement et développement d'une agence de 3 personnes.",
+        "Accompagnement de 20+ PME dans leur transformation digitale.",
+      ],
+      award: "",
+    },
+  ],
   extra_sections: [
     {
       title: "Certifications",
@@ -123,7 +149,7 @@ export function normalizeCVData(data = {}) {
   const defaults = createDefaultCVData();
   const normalized = { ...defaults, ...data };
 
-  for (const key of ["experiences", "education", "skills", "languages", "hobbies", "extra_sections"]) {
+  for (const key of ["experiences", "education", "skills", "tools", "languages", "hobbies", "projects", "extra_sections"]) {
     if (!Array.isArray(normalized[key])) normalized[key] = defaults[key];
   }
 

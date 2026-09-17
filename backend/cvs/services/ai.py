@@ -327,21 +327,132 @@ def _best_ocr_text_for_image(image_path, languages):
     return max(rotated_candidates, key=lambda item: _text_quality(item)["score"], default="")
 
 
-def extract_file_text(file_field):
-    if not file_field:
+def _vision_image_text(path):
+    """Lit le texte d'une image via un modèle VISION (Groq). Bien plus fiable que
+    l'OCR sur les captures d'écran réelles : affiches stylisées, petits caractères,
+    posts Instagram/LinkedIn avec interface autour."""
+    config = _provider_config("groq")
+    if not _has_configured_key(config):
         return ""
-    path = Path(file_field.path)
-    suffix = path.suffix.lower()
+    try:
+        image = Image.open(path)
+        image = ImageOps.exif_transpose(image.convert("RGB"))
+        if image.width > 1400:
+            image = image.resize((1400, max(1, round(image.height * 1400 / image.width))), Image.Resampling.LANCZOS)
+
+        # Image très haute (plusieurs captures fusionnées) : découpe en segments
+        # avec léger chevauchement — le modèle accepte plusieurs images par requête.
+        segments = []
+        if image.height <= 2200:
+            segments = [image]
+        else:
+            step, overlap, y = 2000, 100, 0
+            while y < image.height and len(segments) < 5:
+                segments.append(image.crop((0, y, image.width, min(y + step, image.height))))
+                y += step - overlap
+
+        content = [{"type": "text", "text": (
+            "Ces images contiennent une offre d'emploi (captures d'écran, dans l'ordre). Transcris fidèlement TOUT le texte "
+            "de l'offre : intitulé du poste, entreprise, profil recherché, missions, compétences, contact. "
+            "Ignore l'interface autour (heure, boutons, likes) et ne répète pas les passages en double. "
+            "Réponds uniquement avec le texte transcrit."
+        )}]
+        for segment in segments:
+            buffer = io.BytesIO()
+            segment.save(buffer, "JPEG", quality=88)
+            encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+            content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded}"}})
+
+        payload = {
+            "model": getattr(settings, "GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"),
+            "messages": [{"role": "user", "content": content}],
+            "temperature": 0.1,
+            "max_completion_tokens": 2000,
+        }
+        response = _ai_responses_create(payload, config)
+        return _safe_text(response["choices"][0]["message"]["content"])
+    except Exception:
+        return ""
+
+
+def _extract_image_text(path):
+    """Texte d'une image (capture d'écran d'une offre) : modèle vision d'abord
+    (fiable sur les visuels réels), OCR Tesseract en secours."""
+    vision_text = _vision_image_text(path)
+    if _usable_text(vision_text) and len(vision_text) >= 120:
+        return vision_text
+
+    if not shutil.which("tesseract"):
+        return vision_text
+    languages = getattr(settings, "CV_OCR_LANGUAGES", "fra+eng") or "fra+eng"
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_text = _run_tesseract(path, languages, 6, timeout=25)
+            if _usable_text(raw_text):
+                return _merge_extracted_text(vision_text, raw_text) if vision_text else raw_text
+            prepared_path = Path(tmpdir) / "prepared.png"
+            _preprocess_ocr_image(path, prepared_path)
+            prepared_text = _best_ocr_text_for_image(prepared_path, languages)
+            ocr_text = _merge_extracted_text(prepared_text, raw_text)
+            return _merge_extracted_text(vision_text, ocr_text) if vision_text else ocr_text
+    except Exception:
+        return vision_text
+
+
+def _extract_path_text(path):
+    """Dispatch d'extraction par extension, pour un chemin de fichier sur disque
+    (utilisé aussi bien pour un FieldFile déjà enregistré que pour un fichier
+    temporaire créé le temps d'une extraction)."""
+    suffix = Path(path).suffix.lower()
     try:
         if suffix == ".docx":
             return _shorten(_extract_docx(path))
         if suffix == ".pdf":
             return _shorten(_extract_pdf(path))
+        if suffix in {".png", ".jpg", ".jpeg", ".webp", ".bmp"}:
+            return _shorten(_extract_image_text(path))
         if suffix in {".txt", ".md", ".csv"}:
-            return _shorten(path.read_text(encoding="utf-8", errors="ignore"))
+            return _shorten(Path(path).read_text(encoding="utf-8", errors="ignore"))
     except Exception:
         return ""
     return ""
+
+
+def extract_file_text(file_field):
+    if not file_field:
+        return ""
+    return _extract_path_text(Path(file_field.path))
+
+
+def extract_uploaded_files_text(files):
+    """Extrait et concatène le texte de PLUSIEURS fichiers uploadés (mélange
+    libre d'images et de PDF — ex. une offre en 2 captures d'écran, ou un PDF
+    de plusieurs pages, ou les deux). Chaque fichier est traité selon son type
+    réel (OCR/vision pour une image, pdftotext pour un PDF...). Renvoie une
+    chaîne vide si rien n'a pu être extrait."""
+    parts = []
+    for uploaded in files or []:
+        suffix = Path(getattr(uploaded, "name", "") or "").suffix or ".bin"
+        try:
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                for chunk in uploaded.chunks() if hasattr(uploaded, "chunks") else [uploaded.read()]:
+                    tmp.write(chunk)
+                tmp_path = Path(tmp.name)
+            try:
+                uploaded.seek(0)
+            except Exception:
+                pass
+            text = _extract_path_text(tmp_path)
+            if text.strip():
+                parts.append(text.strip())
+        except Exception:
+            continue
+        finally:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+    return "\n\n".join(parts)
 
 
 def _source_text_hints(text):
@@ -665,12 +776,14 @@ def _clean_ai_data(payload):
         "experiences": [],
         "education": [],
         "skills": [],
+        "tools": [],
         "languages": [],
         "hobbies": [],
+        "projects": [],
         "extra_sections": [],
     }
     cleaned = {**defaults, **{key: value for key, value in data.items() if key in defaults}}
-    for key in ["experiences", "education", "skills", "languages", "hobbies", "extra_sections"]:
+    for key in ["experiences", "education", "skills", "tools", "languages", "hobbies", "projects", "extra_sections"]:
         if not isinstance(cleaned[key], list):
             cleaned[key] = []
     return cleaned
@@ -715,7 +828,7 @@ def _schema():
                 "required": [
                     "first_name", "last_name", "job_title", "photo_url", "phone", "email",
                     "address", "linkedin", "github", "portfolio", "driving_license", "profile", "experiences",
-                    "education", "skills", "languages", "hobbies", "extra_sections"
+                    "education", "skills", "tools", "languages", "hobbies", "projects", "extra_sections"
                 ],
                 "properties": {
                     "first_name": text,
@@ -761,6 +874,7 @@ def _schema():
                         },
                     },
                     "skills": list_text,
+                    "tools": list_text,
                     "languages": {
                         "type": "array",
                         "items": {
@@ -771,6 +885,24 @@ def _schema():
                         },
                     },
                     "hobbies": list_text,
+                    "projects": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["title", "subtitle", "period", "missions", "award", "award_link", "link", "link_note"],
+                            "properties": {
+                                "title": text,
+                                "subtitle": text,
+                                "period": text,
+                                "missions": list_text,
+                                "award": text,
+                                "award_link": text,
+                                "link": text,
+                                "link_note": text,
+                            },
+                        },
+                    },
                     "extra_sections": {
                         "type": "array",
                         "items": {
@@ -890,11 +1022,28 @@ def _provider_config_for(provider):
             "key_name": "OPENAI_API_KEY",
             "model": settings.OPENAI_MODEL,
         }
+    if provider == "openrouter":
+        return {
+            "provider": provider,
+            "label": "OpenRouter",
+            "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "api_key": settings.OPENROUTER_API_KEY,
+            "key_name": "OPENROUTER_API_KEY",
+            "model": settings.OPENROUTER_MODEL,
+        }
     raise AIServiceError(
-        f"Provider IA inconnu: {provider}. Utilise AI_PROVIDER=groq ou AI_PROVIDER=openai.",
+        f"Provider IA inconnu: {provider}. Utilise AI_PROVIDER=groq, AI_PROVIDER=openai ou AI_PROVIDER=openrouter.",
         code="unknown_ai_provider",
         status_code=500,
     )
+
+
+def _uses_chat_completions(config):
+    """Groq et OpenRouter exposent tous deux une API « chat completions »
+    compatible OpenAI ; seul le provider OpenAI natif utilise la nouvelle
+    Responses API (payload différent). Centralise la distinction pour ne pas
+    répéter la liste des providers à chaque appel."""
+    return config["provider"] in ("groq", "openrouter")
 
 
 def _has_configured_key(config):
@@ -904,6 +1053,7 @@ def _has_configured_key(config):
     placeholder_prefixes = {
         "GROQ_API_KEY": ("gsk_xxx",),
         "OPENAI_API_KEY": ("sk-xxx",),
+        "OPENROUTER_API_KEY": ("sk-or-xxx",),
     }.get(config["key_name"], ())
     return not any(key.startswith(prefix) for prefix in placeholder_prefixes)
 
@@ -990,7 +1140,7 @@ def rewrite_cv_text(text, kind="texte", max_words=55):
         "Pas de guillemets, pas de préambule, pas de liste à puces : réponds uniquement avec le texte final."
     )
 
-    if config["provider"] == "groq":
+    if _uses_chat_completions(config):
         payload = {
             "model": config["model"],
             "messages": [
@@ -999,7 +1149,10 @@ def rewrite_cv_text(text, kind="texte", max_words=55):
             ],
             "temperature": 0.4,
             "max_completion_tokens": 700,
-            "reasoning_effort": "low",
+            # gpt-oss (Groq) sait moduler son effort de raisonnement ; les
+            # autres modèles derrière l'API chat completions (Gemini via
+            # OpenRouter...) ne connaissent pas forcément ce paramètre.
+            **({"reasoning_effort": "low"} if config["provider"] == "groq" else {}),
         }
         response = _ai_responses_create(payload, config)
         try:
@@ -1071,7 +1224,7 @@ def write_profile(data, job_offer=""):
         "réponds uniquement avec le texte du profil."
     )
     user_message = json.dumps(summary, ensure_ascii=False)
-    if config["provider"] == "groq":
+    if _uses_chat_completions(config):
         payload = {
             "model": config["model"],
             "messages": [
@@ -1080,7 +1233,10 @@ def write_profile(data, job_offer=""):
             ],
             "temperature": 0.5,
             "max_completion_tokens": 700,
-            "reasoning_effort": "low",
+            # gpt-oss (Groq) sait moduler son effort de raisonnement ; les
+            # autres modèles derrière l'API chat completions (Gemini via
+            # OpenRouter...) ne connaissent pas forcément ce paramètre.
+            **({"reasoning_effort": "low"} if config["provider"] == "groq" else {}),
         }
         response = _ai_responses_create(payload, config)
         try:
@@ -1120,11 +1276,11 @@ def correct_cv_data(data):
         "de phrase, et le FORMAT des périodes/dates (ex: « 2025 À 2026 », « 2025 a 2026 » -> « 2025 - 2026 » ; "
         "« janvier 2024 a janvier 2026 » -> « Janvier 2024 - Janvier 2026 »). "
         "Tu ne dois RIEN inventer, RIEN supprimer, RIEN raccourcir, ni changer le sens. "
-        "Conserve TOUTES les expériences, missions, formations, diplômes, compétences, langues et sections. "
+        "Conserve TOUTES les expériences, missions, formations, diplômes, compétences, langues, projets (titre, sous-titre, période, missions, prix) et sections. "
         "Renvoie EXACTEMENT les mêmes données, corrigées, dans le schéma JSON demandé."
     )
     user_message = json.dumps({"cv_data": data}, ensure_ascii=False)
-    if config["provider"] == "groq":
+    if _uses_chat_completions(config):
         estimated_prompt_tokens = (len(system_prompt) + len(user_message)) // 4 + 400
         max_out = max(1800, min(6000, settings.GROQ_TPM_LIMIT - estimated_prompt_tokens))
         payload = {
@@ -1136,7 +1292,10 @@ def correct_cv_data(data):
             "response_format": {"type": "json_schema", "json_schema": {"name": "cv_ai_result", "schema": _schema()}},
             "temperature": 0.1,
             "max_completion_tokens": max_out,
-            "reasoning_effort": "low",
+            # gpt-oss (Groq) sait moduler son effort de raisonnement ; les
+            # autres modèles derrière l'API chat completions (Gemini via
+            # OpenRouter...) ne connaissent pas forcément ce paramètre.
+            **({"reasoning_effort": "low"} if config["provider"] == "groq" else {}),
         }
     else:
         content = [
@@ -1195,14 +1354,29 @@ def improve_cv(cv, instruction=""):
         "Si une expérience contient 6 missions, tu restitues les 6. Tu peux corriger l'orthographe et reformuler légèrement pour la clarté, mais tu ne dois jamais supprimer, fusionner abusivement ni raccourcir au point de perdre un mot d'information. "
         "Ne perds aucun chiffre, date, nom d'entreprise, intitulé de poste, établissement ni résultat. "
         "Tu remplis exclusivement des champs JSON structurés; tu ne dois jamais coller le texte brut de l'ancien CV dans un seul champ. "
-        "Tu extrais chaque information dans le champ correspondant: identité, contact (téléphone, email, ville, LinkedIn, GitHub, portfolio), profil, expériences, formations, compétences, langues, loisirs et sections supplémentaires. "
+        "Tu extrais chaque information dans le champ correspondant: identité, contact (téléphone, email, ville, LinkedIn, GitHub, portfolio), profil, expériences, formations, compétences, outils informatiques, langues, loisirs et sections supplémentaires. "
         "Quand uploaded_cv_text contient des retours ligne, utilise-les comme indices de rubriques et de hiérarchie. "
         "Une expérience doit devenir un objet experiences avec poste, entreprise, période, lieu et missions; une formation doit devenir un objet education. "
+        "Un projet personnel ou une réalisation notable (ex. « Startup — Co-fondateur, 2025-2026 : plateforme e-commerce ») devient un objet projects "
+        "avec title (intitulé + rôle), subtitle (description courte du projet), period, missions (les réalisations/tâches en puces), et award SEULEMENT "
+        "s'il y a une distinction/prix/classement associé (ex. « 3ᵉ Prix — Nom du concours, 2026 ») ; laisse award vide sinon. "
+        "Si une URL de site/projet apparaît dans le texte source (ex. « exemple.com », « github.com/... »), mets-la dans link (ajoute https:// si absent, ne l'invente jamais). "
+        "Si le texte source précise que le projet n'est pas encore en ligne, est un test, une démo locale ou en cours de déploiement, reporte cette précision "
+        "TELLE QUELLE dans link_note (ex. « Déploiement en cours », « Démo locale »); laisse link_note vide s'il n'y a aucune précision de ce type. "
+        "Si une URL accompagne spécifiquement le prix/la distinction (page de résultats, annonce), mets-la dans award_link ; sinon laisse-la vide. "
+        "N'invente JAMAIS de lien, de statut ni de prix qui n'est pas explicitement présent dans le texte source. "
         "Les listes de compétences doivent être séparées en items courts, pas laissées dans un paragraphe. "
+        "Sépare strictement skills (savoir-faire métier et qualités professionnelles) de tools (logiciels, technologies, langages, frameworks et plateformes). Ne duplique jamais les mêmes éléments dans les deux listes. "
         "Le rendu visuel final sera imposé par le modèle choisi côté application. "
         "Tu dois respecter strictement le modèle sélectionné et ne jamais proposer un autre modèle. "
         "L'ancien CV, s'il existe, sert uniquement de source de données et de photo, jamais de modèle graphique. "
         "Tu dois optimiser la formulation du CV pour l'offre cible sans inventer de diplômes, entreprises, dates, chiffres ou expériences, et sans rien supprimer de ce qui existe déjà. "
+        "ADAPTATION À L'OFFRE : quand une offre d'emploi est fournie (texte, lien ou capture), reformule le profil et les missions pour répondre "
+        "directement aux attentes de l'offre — reprends naturellement ses mots-clés (intitulé, outils, responsabilités) là où le parcours du candidat "
+        "les justifie vraiment, ouvre chaque mission par un verbe d'action, et mets en avant les résultats concrets et chiffres DÉJÀ présents dans le CV. "
+        "Le ton doit rester humain et professionnel, comme écrit par le candidat lui-même : bannis les formules creuses et génériques "
+        "(« dynamique et motivé », « passionné par les défis », « force de proposition » sans preuve) et tout style artificiel ou pompeux. "
+        "Objectif : qu'un recruteur qui lit ce CV en 30 secondes retrouve immédiatement ce qu'il cherche dans son offre. "
         "Pour les CV francophones où le nom complet est écrit en ligne, considère que le premier mot est le nom de famille et que les mots suivants sont les prénoms; par exemple ASSANVO BROU ANTOINE donne last_name=ASSANVO et first_name=BROU ANTOINE. "
         "Si uploaded_cv_text est fourni, extrais les informations disponibles et ne pose pas de questions générales; "
         "ne redemande jamais nom, contact, formation, expériences ou compétences si ces informations apparaissent dans uploaded_cv_text; "
@@ -1243,7 +1417,7 @@ def improve_cv(cv, instruction=""):
     if not config["model"]:
         raise AIServiceError(f"{config['label']}_MODEL manquant dans backend/.env.", code="missing_ai_model")
 
-    if config["provider"] == "groq":
+    if _uses_chat_completions(config):
         user_message = json.dumps(user_payload, ensure_ascii=False)
         # Le palier gratuit Groq plafonne à ~8000 tokens/minute (entrée + sortie).
         # On calcule dynamiquement la marge de sortie pour ne jamais dépasser cette
@@ -1266,7 +1440,10 @@ def improve_cv(cv, instruction=""):
             },
             "temperature": 0.2,
             "max_completion_tokens": groq_max_completion,
-            "reasoning_effort": "low",
+            # gpt-oss (Groq) sait moduler son effort de raisonnement ; les
+            # autres modèles derrière l'API chat completions (Gemini via
+            # OpenRouter...) ne connaissent pas forcément ce paramètre.
+            **({"reasoning_effort": "low"} if config["provider"] == "groq" else {}),
         }
     else:
         request_payload = {
@@ -1338,7 +1515,7 @@ def merge_ai_result(cv, result, instruction=""):
     ]:
         if not _safe_text(merged.get(key)) and _safe_text(current.get(key)):
             merged[key] = current[key]
-    for key in ["experiences", "education", "skills", "languages", "hobbies", "extra_sections"]:
+    for key in ["experiences", "education", "skills", "tools", "languages", "hobbies", "projects", "extra_sections"]:
         if not _clean_items(merged.get(key)) and _clean_items(current.get(key)):
             merged[key] = current[key]
 
@@ -1357,3 +1534,488 @@ def merge_ai_result(cv, result, instruction=""):
     cv.ai_messages = messages[-12:]
     cv.save(update_fields=["data", "ai_data", "ai_error", "ai_status", "status", "ai_messages", "updated_at"])
     return cv
+
+
+# ---------- Assistant conversationnel : questions -> réponses -> CV structuré ----------
+
+ASSISTANT_DONE_TOKEN = "[CV_TERMINE]"
+
+_ASSISTANT_SYSTEM_PROMPT = (
+    "Tu es le conseiller CVBuilder : tu aides le candidat à construire son CV en lui posant des questions, "
+    "en français, sur un ton chaleureux et professionnel (tutoiement). Ne mentionne jamais que tu es une IA. "
+    "RÈGLES : pose UNE SEULE question courte à la fois, puis attends la réponse. "
+    "Suis cet ordre : 1) prénom et nom ; 2) métier/poste visé (l'intitulé du CV) ; 3) coordonnées (téléphone, email, ville) ; "
+    "4) infos personnelles utiles (âge, nationalité, situation familiale, permis — optionnel, une seule question) ; "
+    "5) expériences professionnelles UNE PAR UNE (poste, entreprise, période, 2 à 4 missions), en demandant à chaque fois s'il y en a une autre ; "
+    "6) formations et diplômes (intitulé, établissement, période) ; 7) compétences clés du métier ; 8) langues parlées et niveaux ; "
+    "9) logiciels/outils maîtrisés et qualités personnelles ; 10) projets personnels ou réalisations notables (titre, courte description, période, ce qui a été fait, "
+    "une éventuelle distinction/prix/classement obtenu, et si le projet a un lien en ligne — sinon demande juste s'il y a une raison à préciser, "
+    "ex. « en cours de déploiement » — optionnel) ; 11) loisirs, certifications (optionnel). "
+    "Si une réponse couvre déjà plusieurs points, ne les redemande pas. Si le candidat dit qu'il n'a plus rien à ajouter, passe au point suivant. "
+    "Reste concis : au plus une phrase de reformulation avant ta question. "
+    "FIN DU DIALOGUE : uniquement quand les points 1 à 8 sont tous couverts (ou que le candidat demande explicitement de terminer), "
+    "remercie-le, dis-lui qu'il ne reste plus qu'à ajouter sa photo de profil, et termine ta réponse par le marqueur exact " + ASSISTANT_DONE_TOKEN + ". "
+    "Le marqueur ne doit JAMAIS apparaître dans une réponse qui contient une question : tant que tu poses une question, pas de marqueur."
+)
+
+
+def _dialogue_messages(messages, limit=60):
+    """Nettoie l'historique du dialogue envoyé par le front (role/content)."""
+    cleaned = []
+    for item in (messages or [])[-limit:]:
+        role = "assistant" if (item or {}).get("role") == "assistant" else "user"
+        content = _shorten(_safe_text((item or {}).get("content")), 2000)
+        if content:
+            cleaned.append({"role": role, "content": content})
+    return cleaned
+
+
+def assistant_chat(messages):
+    """Dialogue guidé de création de CV : renvoie (réponse, terminé).
+    L'assistant pose une question à la fois et signale la fin par un marqueur."""
+    config = _provider_config()
+    if not _has_configured_key(config):
+        raise AIServiceError(
+            f"La clé {config['label']} n'est pas configurée sur le serveur.",
+            code="missing_ai_key",
+            status_code=503,
+        )
+
+    dialogue = _dialogue_messages(messages)
+    if not dialogue:
+        dialogue = [{"role": "user", "content": "Bonjour, je veux créer mon CV."}]
+
+    if _uses_chat_completions(config):
+        payload = {
+            "model": config["model"],
+            "messages": [{"role": "system", "content": _ASSISTANT_SYSTEM_PROMPT}, *dialogue],
+            "temperature": 0.5,
+            "max_completion_tokens": 700,
+            # gpt-oss (Groq) sait moduler son effort de raisonnement ; les
+            # autres modèles derrière l'API chat completions (Gemini via
+            # OpenRouter...) ne connaissent pas forcément ce paramètre.
+            **({"reasoning_effort": "low"} if config["provider"] == "groq" else {}),
+        }
+        response = _ai_responses_create(payload, config)
+        try:
+            content = response["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError):
+            raise AIServiceError("Réponse inattendue de l'assistant.", code="bad_ai_response", status_code=502)
+    else:
+        payload = {
+            "model": config["model"],
+            "input": [
+                {"role": "system", "content": [{"type": "input_text", "text": _ASSISTANT_SYSTEM_PROMPT}]},
+                *[
+                    {"role": item["role"], "content": [{"type": "input_text", "text": item["content"]}]}
+                    for item in dialogue
+                ],
+            ],
+        }
+        response = _ai_responses_create(payload, config)
+        content = response.get("output_text") or _parse_response(response, provider_label=config["label"]).get("raw", "")
+
+    reply = _safe_text(content)
+    done = ASSISTANT_DONE_TOKEN in reply
+    reply = reply.replace(ASSISTANT_DONE_TOKEN, "").strip()
+    # Garde-fous : une réponse qui pose encore une question ne clôt jamais le
+    # dialogue, et un CV ne peut pas être complet en moins de 5 réponses.
+    if done and reply.rstrip().endswith("?"):
+        done = False
+    if done and sum(1 for item in dialogue if item["role"] == "user") < 5:
+        done = False
+    if not reply:
+        reply = "Parfait, il ne reste plus qu'à ajouter ta photo de profil !" if done else "Peux-tu préciser ?"
+    return reply, done
+
+
+def assistant_finalize(messages):
+    """Organise TOUTES les réponses du dialogue en données de CV structurées
+    (même schéma JSON et mêmes règles de fidélité que l'extraction)."""
+    config = _provider_config()
+    if not _has_configured_key(config):
+        raise AIServiceError(
+            f"La clé {config['label']} n'est pas configurée sur le serveur.",
+            code="missing_ai_key",
+            status_code=503,
+        )
+
+    dialogue = _dialogue_messages(messages, limit=120)
+    transcript = "\n".join(
+        f"{'Conseiller' if item['role'] == 'assistant' else 'Candidat'} : {item['content']}"
+        for item in dialogue
+    )
+    if not transcript.strip():
+        raise AIServiceError("Aucune réponse à organiser.", code="empty_dialogue", status_code=400)
+
+    system_prompt = (
+        "Tu reçois la transcription d'un entretien entre un conseiller et un candidat qui construit son CV. "
+        "Structure TOUTES les informations données PAR LE CANDIDAT dans le schéma JSON demandé : identité, intitulé du poste visé, "
+        "coordonnées (téléphone, email, ville, LinkedIn…), infos personnelles (âge, nationalité, situation, permis), profil, "
+        "expériences (poste, entreprise, période, missions), formations, compétences, langues (avec niveau), "
+        "projets personnels ou réalisations (title, subtitle, period, missions, award si une distinction/prix a été mentionnée, "
+        "link si un site/lien a été donné, link_note si le candidat a précisé que ce n'est pas encore en ligne ou que c'est un test/une démo), "
+        "loisirs et sections supplémentaires (Informatiques, Aptitudes, Certifications…). "
+        "RÈGLE ABSOLUE : n'invente RIEN (aucune entreprise, date, chiffre ni diplôme) et ne perds AUCUNE information donnée par le candidat. "
+        "Corrige uniquement l'orthographe, les accents et les majuscules. "
+        "Si le candidat n'a pas dicté d'accroche de profil, rédige-en une courte (2-3 lignes) strictement fidèle à ses réponses. "
+        "Les champs sans information restent vides. Réponds uniquement avec le JSON demandé."
+    )
+    user_message = json.dumps({"transcription": transcript}, ensure_ascii=False)
+    if _uses_chat_completions(config):
+        estimated_prompt_tokens = (len(system_prompt) + len(user_message)) // 4 + 400
+        max_out = max(1800, min(6000, settings.GROQ_TPM_LIMIT - estimated_prompt_tokens))
+        payload = {
+            "model": config["model"],
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            "response_format": {"type": "json_schema", "json_schema": {"name": "cv_ai_result", "schema": _schema()}},
+            "temperature": 0.2,
+            "max_completion_tokens": max_out,
+            # gpt-oss (Groq) sait moduler son effort de raisonnement ; les
+            # autres modèles derrière l'API chat completions (Gemini via
+            # OpenRouter...) ne connaissent pas forcément ce paramètre.
+            **({"reasoning_effort": "low"} if config["provider"] == "groq" else {}),
+        }
+    else:
+        content = [
+            {"type": "input_text", "text": system_prompt},
+            {"type": "input_text", "text": user_message},
+        ]
+        payload = {
+            "model": config["model"],
+            "input": [{"role": "user", "content": content}],
+            "text": {"format": {"type": "json_schema", "name": "cv_ai_result", "strict": True, "schema": _schema()}},
+        }
+    response = _ai_responses_create(payload, config)
+    return _clean_ai_data(_parse_response(response, provider_label=config["label"]))
+
+
+# ---------- Adaptation à une offre : propositions en miroir, verdict franc ----------
+
+def _adapt_schema():
+    text = {"type": "string"}
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["report", "cv_result"],
+        "properties": {
+            "report": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["verdict", "score", "resume", "changes"],
+                "properties": {
+                    "verdict": {"type": "string", "enum": ["bonne_correspondance", "correspondance_partielle", "hors_profil"]},
+                    "score": {"type": "integer"},
+                    "resume": text,
+                    "changes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["champ", "actuel", "propose", "raison"],
+                            "properties": {"champ": text, "actuel": text, "propose": text, "raison": text},
+                        },
+                    },
+                },
+            },
+            "cv_result": _schema(),
+        },
+    }
+
+
+_ADAPT_SYSTEM_PROMPT = (
+    "Tu es un coach carrière francophone senior, franc et professionnel. Tu compares un CV à une offre d'emploi "
+    "et tu proposes des reformulations pour que le recruteur de CETTE offre retienne ce CV en 30 secondes. "
+    "D'ABORD LE VERDICT, avec honnêteté totale :\n"
+    "- 'bonne_correspondance' : le métier, le domaine et le niveau collent à l'offre.\n"
+    "- 'correspondance_partielle' : même domaine mais des écarts (intitulé, séniorité, outils) que des reformulations honnêtes peuvent combler.\n"
+    "- 'hors_profil' : le CV ne correspond PAS à l'offre (autre métier, diplôme requis absent). Dans ce cas dis-le CLAIREMENT dans "
+    "'resume' (ex. « Cette offre demande un chirurgien : ton profil de développeur ne correspond pas, postuler serait une perte de temps »), "
+    "laisse 'changes' VIDE et renvoie le CV strictement inchangé dans cv_result.\n"
+    "REFORMULATIONS DÉFENDABLES (jamais de mensonge) :\n"
+    "- Tu peux réorienter un intitulé de poste vers le vocabulaire de l'offre SI le contenu réel de l'expérience le justifie "
+    "(ex. l'offre cherche un développeur full-stack et le candidat était web designer chez Zenova avec des projets de développement : "
+    "propose « Développement full-stack sur [ses projets réels] chez Zenova » — il connaît l'environnement, c'est défendable en entretien).\n"
+    "- Tu alignes les compétences du CV sur celles recherchées par l'offre SEULEMENT si le candidat a le diplôme ou le domaine qui le justifie "
+    "(ex. offre ingénieur système + diplôme en informatique de gestion : compétences systèmes transférables mises en avant).\n"
+    "- INTERDIT : inventer un employeur, une date, un diplôme, une certification, un chiffre, ou une expérience qui n'existe pas. "
+    "INTERDIT aussi d'ajouter un outil ou une technologie PRÉCISE absente du CV (ex. ne cite pas « AWS » ou « Azure » si le CV dit "
+    "seulement « déploiement sur serveurs ») : reste alors sur la formulation générique du CV, réorientée vers l'offre. "
+    "INTERDIT également d'inventer ou de modifier un lien de projet (link), un lien de prix (award_link) ou une justification de statut "
+    "(link_note, ex. « en cours de déploiement ») : ces champs sont recopiés strictement à l'identique.\n"
+    "- INTOUCHABLES : les formations, diplômes et certifications sont recopiés STRICTEMENT à l'identique dans cv_result "
+    "(intitulé exact, établissement, période) et n'apparaissent JAMAIS dans changes. Un diplôme reste un diplôme : "
+    "tu n'as pas le droit d'en reformuler l'intitulé, même légèrement. Seuls le profil, l'intitulé du CV, les expériences "
+    "(intitulés et missions) et les compétences peuvent être reformulés.\n"
+    "CHANGES : liste chaque modification proposée avec 'champ' (libellé TOUJOURS EN FRANÇAIS, lisible : « Profil », « Intitulé du CV », « Expérience Zenova — intitulé », "
+    "« Expérience Zenova — missions », « Compétences »…), 'actuel' (texte actuel, court), 'propose' (texte proposé) et 'raison' "
+    "(une phrase : pourquoi ça capte CE recruteur). Maximum 8 changements, les plus décisifs d'abord.\n"
+    "CV_RESULT : le CV COMPLET avec les changements appliqués (règle de fidélité : ne supprime AUCUNE information existante). "
+    "Ton humain et professionnel, zéro formule creuse (« dynamique et motivé », « passionné par les défis »). "
+    "Réponds uniquement avec le JSON demandé."
+)
+
+
+def adapt_cv_proposals(cv):
+    """Compare le CV à l'offre fournie (texte, capture d'écran OCRisée ou lien) et
+    renvoie (report, adapted_data) SANS rien sauvegarder : verdict franc, liste de
+    modifications en miroir (actuel/proposé/raison) et CV complet adapté."""
+    config = _provider_config()
+    if not _has_configured_key(config):
+        raise AIServiceError(
+            f"La clé {config['label']} n'est pas configurée sur le serveur.",
+            code="missing_ai_key",
+            status_code=503,
+        )
+
+    offer_text = _safe_text(cv.job_offer_text) or extract_file_text(cv.job_offer_file) or _fetch_url_text(cv.job_offer_url)
+    offer_text = _shorten(offer_text, 6000)
+    if not offer_text.strip():
+        raise AIServiceError(
+            "Aucune offre exploitable : colle le texte de l'offre ou ajoute une capture d'écran lisible.",
+            code="empty_offer",
+            status_code=400,
+        )
+
+    user_message = json.dumps({"offre_emploi": offer_text, "cv_actuel": cv.data or {}}, ensure_ascii=False)
+    if _uses_chat_completions(config):
+        # Estimation prudente : le français tokenise à ~3 caractères/token (pas 4).
+        # Dépasser la limite TPM d'un seul token rejette TOUTE la requête (429).
+        estimated_prompt_tokens = (len(_ADAPT_SYSTEM_PROMPT) + len(user_message)) // 3 + 500
+        max_out = max(1500, min(4500, settings.GROQ_TPM_LIMIT - estimated_prompt_tokens))
+        payload = {
+            "model": config["model"],
+            "messages": [
+                {"role": "system", "content": _ADAPT_SYSTEM_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+            "response_format": {"type": "json_schema", "json_schema": {"name": "cv_adapt_result", "schema": _adapt_schema()}},
+            "temperature": 0.3,
+            "max_completion_tokens": max_out,
+            # gpt-oss (Groq) sait moduler son effort de raisonnement ; les
+            # autres modèles derrière l'API chat completions (Gemini via
+            # OpenRouter...) ne connaissent pas forcément ce paramètre.
+            **({"reasoning_effort": "low"} if config["provider"] == "groq" else {}),
+        }
+    else:
+        payload = {
+            "model": config["model"],
+            "input": [{"role": "user", "content": [
+                {"type": "input_text", "text": _ADAPT_SYSTEM_PROMPT},
+                {"type": "input_text", "text": user_message},
+            ]}],
+            "text": {"format": {"type": "json_schema", "name": "cv_adapt_result", "strict": True, "schema": _adapt_schema()}},
+        }
+    response = _ai_responses_create(payload, config)
+    parsed = _parse_response(response, provider_label=config["label"])
+    report = parsed.get("report") or {}
+    adapted = _clean_ai_data(parsed.get("cv_result") or {})
+    # Champs gérés côté front, jamais touchés par l'adaptation.
+    current = cv.data or {}
+    for key in ("photo_url", "enabled_sections", "section_order"):
+        if current.get(key):
+            adapted[key] = current[key]
+    _restore_protected_sections(current, adapted, report)
+    return report, adapted
+
+
+# Sections que l'adaptation n'a JAMAIS le droit de toucher : un diplôme reste
+# un diplôme, une certification reste une certification.
+_PROTECTED_TOKENS = ("formation", "diplome", "diplôme", "certification", "certificat", "étude", "etude")
+
+
+def _looks_protected(label):
+    folded = _safe_text(label).lower()
+    return any(token in folded for token in _PROTECTED_TOKENS)
+
+
+def _restore_protected_sections(current, adapted, report):
+    """Garantie côté code (en plus du prompt) : les formations/diplômes et les
+    sections certifications sont recopiés à l'identique depuis le CV d'origine,
+    et les propositions qui les visaient sont retirées du rapport."""
+    # 1) Formations & diplômes : strictement ceux d'origine.
+    if current.get("education"):
+        adapted["education"] = current["education"]
+
+    # 2) extra_sections protégées (Certifications, Diplômes…) : versions d'origine.
+    current_sections = [s for s in (current.get("extra_sections") or []) if isinstance(s, dict)]
+    protected_originals = [s for s in current_sections if _looks_protected(s.get("title"))]
+    if protected_originals or adapted.get("extra_sections"):
+        kept = [s for s in (adapted.get("extra_sections") or []) if not _looks_protected((s or {}).get("title"))]
+        adapted["extra_sections"] = kept + protected_originals
+
+    # 3) Le rapport ne doit proposer aucun changement sur ces sections.
+    if isinstance(report.get("changes"), list):
+        report["changes"] = [c for c in report["changes"] if not _looks_protected((c or {}).get("champ"))]
+
+
+# ---------- Lettre de motivation : agent rédacteur humain, sobre et ciblé ----------
+
+def _cover_letter_schema():
+    text = {"type": "string"}
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["objet", "corps"],
+        "properties": {"objet": text, "corps": text},
+    }
+
+
+_COVER_LETTER_SYSTEM_PROMPT = (
+    "Tu es un conseiller en insertion professionnelle francophone, expert des lettres de motivation qui obtiennent "
+    "des entretiens. Tu rédiges la lettre du candidat à partir de SON CV (déjà adapté à l'offre) et de L'OFFRE fournie.\n"
+    "STYLE — humain avant tout :\n"
+    "- Écris comme le candidat lui-même : simple, direct, sincère, professionnel. Français naturel, phrases courtes ou moyennes.\n"
+    "- BANNIS le style artificiel et les formules creuses : « c'est avec un vif intérêt », « votre prestigieuse entreprise », "
+    "« passionné par les défis », « dynamique et motivé », les superlatifs en série et la flatterie. Zéro exagération : "
+    "une lettre crédible et posée vaut mieux qu'une lettre grandiose. Ne mentionne jamais qu'une IA a écrit la lettre.\n"
+    "ADAPTATION AU PROFIL — ajuste le ton au type de CV :\n"
+    "- Jeune diplômé / peu d'expérience : appuie-toi sur la formation, les projets et les stages, sans t'excuser du manque d'expérience.\n"
+    "- Profil expérimenté : 1 ou 2 réalisations concrètes du CV (avec les chiffres s'ils y figurent), parle en résultats.\n"
+    "- Métier technique (développeur, comptable, ingénieur…) : sobre et précis, vocabulaire du métier, pas de lyrisme.\n"
+    "- Métier commercial / relation client : un ton un peu plus chaleureux et orienté contact, toujours professionnel.\n"
+    "- Métier créatif : une accroche légèrement plus personnelle est permise, sans extravagance.\n"
+    "FOND :\n"
+    "- Base-toi UNIQUEMENT sur les faits du CV : n'invente aucun diplôme, employeur, chiffre, outil ni compétence.\n"
+    "- Réponds à l'offre : identifie 2 ou 3 attentes clés de l'offre et montre, preuves du CV à l'appui, que le candidat y répond.\n"
+    "- Ne récite pas le CV (le recruteur l'a sous les yeux) : sélectionne uniquement ce qui sert CE poste.\n"
+    "PERSONNALISATION À L'ENTREPRISE — obligatoire, à partir du texte de l'offre :\n"
+    "- Repère dans l'offre : le NOM de l'entreprise, son activité/secteur, le lieu, l'intitulé exact du poste et la référence éventuelle.\n"
+    "- Nomme l'entreprise dans l'objet ou dans l'accroche (ex. « le poste de X au sein de <Entreprise> ») : la lettre doit être "
+    "impossible à envoyer telle quelle à une autre entreprise.\n"
+    "- Relie une phrase au contexte de l'entreprise ou de la mission tels que décrits DANS L'OFFRE (activité, clientèle, projet, "
+    "outils, enjeux) : montre que le candidat a compris où il postule — sans flatterie et sans rien inventer sur l'entreprise "
+    "qui ne figure pas dans l'offre.\n"
+    "- Reprends naturellement 2 ou 3 mots-clés de l'offre (missions, outils, responsabilités) là où le parcours du candidat les justifie.\n"
+    "- Si l'offre ne nomme aucune entreprise, reste général (« votre entreprise », « votre équipe ») et personnalise sur le poste et les missions.\n"
+    "FORME — courte :\n"
+    "- 3 à 4 paragraphes, 150 à 220 mots MAXIMUM au total. Jamais plus.\n"
+    "- Structure : 1) accroche directe — le poste visé et pourquoi le candidat est légitime, en une ou deux phrases ; "
+    "2) preuves — parcours et réalisations en lien direct avec l'offre ; 3) apport — ce que le candidat fera concrètement "
+    "pour l'équipe ; 4) disponibilité pour un entretien + formule de politesse simple, adaptée au métier.\n"
+    "- Commence le corps par « Madame, Monsieur, » (ou le destinataire exact si l'offre le nomme). "
+    "Termine par la formule de politesse SANS le nom du candidat : la signature est ajoutée automatiquement.\n"
+    "- 'objet' : une seule ligne, ex. « Candidature au poste de X » (+ la référence de l'offre si elle existe), sans le mot « Objet ».\n"
+    "- Pas d'en-tête d'adresse, pas de date, pas de signature dans 'corps' : uniquement le texte de la lettre.\n"
+    "- Si l'utilisateur donne une consigne (ton, point à souligner…), respecte-la tant qu'elle ne contredit pas ces règles.\n"
+    "Réponds uniquement avec le JSON demandé."
+)
+
+
+def _cover_letter_cv_summary(data):
+    """Résumé factuel du CV envoyé à l'agent : tout ce qui peut servir la lettre,
+    rien de plus (la photo, l'ordre des sections… ne servent à rien ici)."""
+    data = data or {}
+    experiences = []
+    for exp in _clean_items(data.get("experiences"))[:6]:
+        experiences.append({
+            "poste": _safe_text(exp.get("job_title")),
+            "entreprise": _safe_text(exp.get("company")),
+            "periode": _safe_text(exp.get("period")),
+            "missions": [_safe_text(m) for m in (exp.get("missions") or []) if _safe_text(m)][:4],
+        })
+    return {
+        "prenom": _safe_text(data.get("first_name")),
+        "nom": _safe_text(data.get("last_name")),
+        "intitule": _safe_text(data.get("job_title")),
+        "profil": _safe_text(data.get("profile")),
+        "experiences": experiences,
+        "formations": [
+            {
+                "diplome": _safe_text(e.get("degree")),
+                "etablissement": _safe_text(e.get("institution")),
+                "periode": _safe_text(e.get("period")),
+            }
+            for e in _clean_items(data.get("education"))[:5]
+        ],
+        "competences": [_safe_text(s) for s in _clean_items(data.get("skills")) if _safe_text(s)][:14],
+        "langues": [
+            {"langue": _safe_text(l.get("language")), "niveau": _safe_text(l.get("level"))}
+            for l in _clean_items(data.get("languages"))
+            if isinstance(l, dict)
+        ][:6],
+        "sections_supplementaires": [
+            {"titre": _safe_text(s.get("title")), "elements": [_safe_text(i) for i in (s.get("items") or [])][:6]}
+            for s in _clean_items(data.get("extra_sections"))
+            if isinstance(s, dict)
+        ][:4],
+    }
+
+
+def write_cover_letter(cv, instruction=""):
+    """Rédige la lettre de motivation du CV : humaine, professionnelle, sobre,
+    courte (150-220 mots), basée sur le CV adapté et l'offre, ton ajusté au
+    métier. Renvoie {"objet": ..., "corps": ...} sans rien sauvegarder."""
+    config = _provider_config()
+    if not _has_configured_key(config):
+        raise AIServiceError(
+            f"La clé {config['label']} n'est pas configurée sur le serveur.",
+            code="missing_ai_key",
+            status_code=503,
+        )
+
+    offer_text = _safe_text(cv.job_offer_text) or extract_file_text(cv.job_offer_file) or _fetch_url_text(cv.job_offer_url)
+    offer_text = _shorten(offer_text, 6000)
+    if not offer_text.strip():
+        raise AIServiceError(
+            "Aucune offre exploitable pour rédiger la lettre : adapte d'abord ton CV à une offre "
+            "(texte, capture d'écran ou lien).",
+            code="empty_offer",
+            status_code=400,
+        )
+
+    summary = _cover_letter_cv_summary(cv.data)
+    if not (summary["intitule"] or summary["experiences"] or summary["formations"]):
+        raise AIServiceError(
+            "Le CV est trop vide pour rédiger une lettre : complète au moins l'intitulé, une expérience ou une formation.",
+            code="not_enough_data",
+            status_code=400,
+        )
+
+    user_message = json.dumps(
+        {
+            "offre_emploi": offer_text,
+            "cv_candidat": summary,
+            "consigne_utilisateur": _shorten(_safe_text(instruction), 600),
+        },
+        ensure_ascii=False,
+    )
+    if _uses_chat_completions(config):
+        estimated_prompt_tokens = (len(_COVER_LETTER_SYSTEM_PROMPT) + len(user_message)) // 3 + 500
+        max_out = max(900, min(2000, settings.GROQ_TPM_LIMIT - estimated_prompt_tokens))
+        payload = {
+            "model": config["model"],
+            "messages": [
+                {"role": "system", "content": _COVER_LETTER_SYSTEM_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "cover_letter_result", "schema": _cover_letter_schema()},
+            },
+            "temperature": 0.5,
+            "max_completion_tokens": max_out,
+            # gpt-oss (Groq) sait moduler son effort de raisonnement ; les
+            # autres modèles derrière l'API chat completions (Gemini via
+            # OpenRouter...) ne connaissent pas forcément ce paramètre.
+            **({"reasoning_effort": "low"} if config["provider"] == "groq" else {}),
+        }
+    else:
+        payload = {
+            "model": config["model"],
+            "input": [{"role": "user", "content": [
+                {"type": "input_text", "text": _COVER_LETTER_SYSTEM_PROMPT},
+                {"type": "input_text", "text": user_message},
+            ]}],
+            "text": {"format": {"type": "json_schema", "name": "cover_letter_result", "strict": True, "schema": _cover_letter_schema()}},
+        }
+    response = _ai_responses_create(payload, config)
+    parsed = _parse_response(response, provider_label=config["label"])
+    objet = _safe_text(parsed.get("objet")).removeprefix("Objet :").removeprefix("Objet:").strip()
+    corps = _safe_text(parsed.get("corps"))
+    if not corps:
+        raise AIServiceError("La lettre générée est vide, réessaie.", code="bad_ai_response", status_code=502)
+    return {"objet": objet, "corps": corps}

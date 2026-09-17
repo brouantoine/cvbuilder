@@ -220,13 +220,13 @@
 }
 
 .new-document-card strong {
-  font-size: 1.05rem;
+  font-size: 0.88rem;
   color: var(--text);
 }
 
 .new-document-card small {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.74rem;
 }
 
 .document-card {
@@ -271,37 +271,100 @@
   pointer-events: none;
 }
 
+.cv-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+}
+
 .document-card-body {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  padding: 1rem 1.1rem 1.15rem;
+  gap: 0.4rem;
+  padding: 0.8rem 0.9rem 0.9rem;
 }
 
 .document-title-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: 0.5rem;
+}
+
+/* Titre sur UNE seule ligne : le début (poste visé) donne l'idée du CV,
+   le reste est masqué (… ) — le titre complet reste visible au survol. */
+.document-title-main {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .document-title-row h3 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.88rem;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-title-side {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Étoile « CV de référence » */
+.reference-star {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--muted, #94a3b8);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.reference-star:hover {
+  color: #d97706;
+  border-color: #d97706;
+}
+
+.reference-star.active {
+  color: #d97706;
+  border-color: #f59e0b;
+  background: #fffbeb;
+  cursor: default;
+}
+
+.reference-star.active svg {
+  fill: #f59e0b;
+}
+
+.reference-note {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #b45309;
 }
 
 .document-title-row p {
-  margin: 0.2rem 0 0;
+  margin: 0.15rem 0 0;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.74rem;
 }
 
 .status-pill {
   flex: 0 0 auto;
-  padding: 0.28rem 0.7rem;
+  padding: 0.2rem 0.55rem;
   border-radius: var(--radius-pill);
-  font-size: 0.76rem;
+  font-size: 0.66rem;
   font-weight: 700;
 }
 
@@ -318,20 +381,20 @@
 .document-date {
   margin: 0;
   color: var(--faint);
-  font-size: 0.82rem;
+  font-size: 0.72rem;
 }
 
 .document-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.35rem;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
 }
 
 .document-actions .btn {
-  min-height: 38px;
-  padding: 0 0.85rem;
-  font-size: 0.85rem;
+  min-height: 30px;
+  padding: 0 0.6rem;
+  font-size: 0.74rem;
 }
 
 .dash-action-link {
@@ -359,5 +422,127 @@
 
   .dash-stats {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Adapter un CV à une offre (proposé à l'arrivée) ---------- */
+.offer-adapt-panel {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 14px);
+  background: linear-gradient(120deg, var(--primary-tint, #ecfdf5), #ffffff 60%);
+  margin: 14px 0;
+  overflow: hidden;
+}
+
+.offer-adapt-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.offer-adapt-head strong {
+  display: block;
+  font-size: 1.05rem;
+  color: var(--text, #1f2937);
+}
+
+.offer-adapt-head span:not(.offer-adapt-toggle) {
+  color: var(--muted, #64748b);
+  font-size: 0.92rem;
+}
+
+.offer-adapt-toggle {
+  flex-shrink: 0;
+  background: var(--primary, #10b981);
+  color: #ffffff;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 0.92rem;
+}
+
+.offer-adapt-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+
+.offer-adapt-field {
+  display: grid;
+  gap: 6px;
+}
+
+.offer-adapt-field > span {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text, #1f2937);
+}
+
+.offer-adapt-field select,
+.offer-adapt-field textarea {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #ffffff;
+}
+
+.offer-adapt-upload {
+  cursor: pointer;
+}
+
+/* Bloc de succès après création du CV adapté : propose la lettre de motivation. */
+.adapt-success {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--primary, #10b981);
+  border-radius: 12px;
+  background: var(--primary-tint, #ecfdf5);
+}
+
+.adapt-success-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--primary-deep, #047857);
+}
+
+.adapt-success-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text, #1f2937);
+}
+
+.adapt-success-hint.subtle {
+  font-size: 0.8rem;
+  color: var(--muted, #64748b);
+}
+
+/* Actions du panneau offre (proposition + bloc succès) : alignées, et
+   empilées pleine largeur sur mobile pour rester nettes. */
+.offer-adapt-body .adapt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 560px) {
+  .offer-adapt-body .adapt-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .offer-adapt-body .adapt-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
 }

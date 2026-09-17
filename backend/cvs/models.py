@@ -59,6 +59,13 @@ class CV(models.Model):
     ai_data = models.JSONField(default=dict, blank=True)
     ai_messages = models.JSONField(default=list, blank=True)
 
+    # CV « de référence » (un seul par utilisateur) : c'est lui qui est proposé
+    # par défaut pour l'adaptation à chaque nouvelle offre.
+    is_reference = models.BooleanField(default=False)
+    # Lettre de motivation liée à ce CV : rédigée par l'IA à partir du CV adapté
+    # et de l'offre, puis librement éditable par l'utilisateur.
+    cover_letter = models.TextField(blank=True)
+
     generated_file = models.FileField(upload_to="cvs/generated/", blank=True, null=True)
     generated_pdf = models.FileField(upload_to="cvs/generated/", blank=True, null=True)
     generated_at = models.DateTimeField(blank=True, null=True)

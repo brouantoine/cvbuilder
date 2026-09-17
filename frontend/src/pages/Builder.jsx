@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { AlertTriangle, MessageCircle, PenLine, Sparkles, Target, Wand2 } from "lucide-react";
+import { AdaptProposal } from "../components/AdaptProposal";
+import { AssistantChat } from "../components/AssistantChat";
 import { Button } from "../components/Button";
+import { CoverLetterModal } from "../components/CoverLetterModal";
 import { CVPreview } from "../components/CVPreview";
 import { CVLivePreview } from "../components/CVLivePreview";
 import { cvsApi } from "../api/client";
@@ -12,6 +16,7 @@ import {
   defaultExperience,
   defaultExtraSection,
   defaultLanguage,
+  defaultProject,
   normalizeCVData,
 } from "../templates/cvData";
 import { templateStyleLabel } from "../templates/templateLabels";
@@ -67,6 +72,47 @@ function splitLines(value) {
     .split("\n")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function linesEqual(a, b) {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  return a.every((item, index) => item === b[index]);
+}
+
+// Zone "une ligne par élément" (missions, compétences...). Le texte tapé est
+// gardé tel quel dans un état local le temps de la frappe — sinon, renvoyer
+// la version nettoyée (lignes vides retirées, espaces de bord coupés) à
+// CHAQUE frappe fait disparaître l'espace ou le retour à la ligne qu'on
+// vient de taper dès que le composant se re-rend avec la valeur "propre".
+function LinesField({ label, hint, rows, value, onChange, placeholder }) {
+  const [raw, setRaw] = useState(() => listValue(value));
+  const [committed, setCommitted] = useState(value);
+
+  // Resync le texte local si le tableau change depuis l'EXTÉRIEUR (import IA,
+  // "Appliquer les corrections"...), mais jamais quand c'est notre propre
+  // frappe qui vient de le mettre à jour — sinon l'espace ou le retour à la
+  // ligne qu'on vient de taper disparaît au re-rendu suivant.
+  if (!linesEqual(value, committed)) {
+    setCommitted(value);
+    setRaw(listValue(value));
+  }
+
+  const handleChange = (event) => {
+    const next = event.target.value;
+    setRaw(next);
+    const parsed = splitLines(next);
+    setCommitted(parsed);
+    onChange(parsed);
+  };
+
+  return (
+    <div className="form-group lines-field">
+      {label && <label>{label}</label>}
+      {hint && <p className="field-hint">{hint}</p>}
+      <textarea rows={rows} value={raw} onChange={handleChange} placeholder={placeholder} />
+    </div>
+  );
 }
 
 function templateImage(template) {
@@ -158,6 +204,16 @@ export function Builder() {
   const requestedStep = STEP_ALIASES[searchParams.get("step")] || searchParams.get("step");
   const cvId = useParams().id;
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Message transmis par une autre page (ex. adaptation à une offre depuis l'espace CV).
+  useEffect(() => {
+    if (location.state?.adaptMessage) {
+      showMessage(location.state.adaptMessage);
+      window.history.replaceState({}, "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const {
     templates,
@@ -195,9 +251,31 @@ export function Builder() {
   const [busy, setBusy] = useState(false);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [localMessage, setLocalMessage] = useState("");
+  const [localTone, setLocalTone] = useState("success");
   const [rewrite, setRewrite] = useState({ loading: false, text: "", error: "" });
   const [correction, setCorrection] = useState({ loading: false, ready: false, error: "" });
+  const [assistantMessages, setAssistantMessages] = useState([]);
+  const [assistantDone, setAssistantDone] = useState(false);
+  const [offerScreenshots, setOfferScreenshots] = useState([]);
+  const [adaptReport, setAdaptReport] = useState(null);
+  const [letterOpen, setLetterOpen] = useState(false);
+  const adaptedDataRef = useRef(null);
   const correctedRef = useRef(null);
+
+  // Affiche un message sous la barre d'étapes ; tone "error" = bandeau rouge.
+  const showMessage = (text, tone = "success") => {
+    setLocalTone(tone);
+    setLocalMessage(text);
+  };
+
+  // Défile vers le message UNIQUEMENT quand il apparaît/change — jamais pendant
+  // la frappe (sinon la page « saute » en haut à chaque lettre tapée).
+  const alertRef = useRef(null);
+  useEffect(() => {
+    if ((error || localMessage) && alertRef.current) {
+      alertRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [error, localMessage]);
 
   const normalizedData = normalizeCVData(data);
   const effectiveCvId = cvId || currentCV?.id;
@@ -311,7 +389,7 @@ export function Builder() {
 
   const chooseEntryMode = (mode) => {
     setEntryMode(mode);
-    setLocalMessage("");
+    showMessage("");
     if (mode === "manual") setSourceFile(null);
   };
 
@@ -323,7 +401,7 @@ export function Builder() {
       return;
     }
     setSourceFile(file || null);
-    setLocalMessage("");
+    showMessage("");
   };
 
   const updateField = (field, value) => {
@@ -340,8 +418,14 @@ export function Builder() {
     });
   };
 
-  const updateExperienceMissions = (index, value) => {
-    updateExperience(index, "missions", splitLines(value));
+  const updateProject = (index, field, value) => {
+    setData((current) => {
+      const next = normalizeCVData(current);
+      next.projects = next.projects.map((item, itemIndex) => (
+        itemIndex === index ? { ...item, [field]: value } : item
+      ));
+      return next;
+    });
   };
 
   const updateEducation = (index, field, value) => {
@@ -374,10 +458,6 @@ export function Builder() {
     });
   };
 
-  const updateExtraSectionItems = (index, value) => {
-    updateExtraSection(index, "items", splitLines(value));
-  };
-
   const addItem = (field, factory) => {
     setData((current) => {
       const next = normalizeCVData(current);
@@ -397,6 +477,7 @@ export function Builder() {
   const addExperience = () => addItem("experiences", defaultExperience);
   const addEducation = () => addItem("education", defaultEducation);
   const addLanguage = () => addItem("languages", defaultLanguage);
+  const addProject = () => addItem("projects", defaultProject);
   const addExtraSection = () => addItem("extra_sections", defaultExtraSection);
 
   const runAnalysis = async () => {
@@ -410,16 +491,16 @@ export function Builder() {
   };
 
   const handleNext = async () => {
-    setLocalMessage("");
+    showMessage("");
     setBusy(true);
     try {
       if (activeStep === "import") {
         if (isUploadMode && !hasSourceCV) {
-          setLocalMessage("Importez votre CV PDF avant de lancer l'analyse.");
+          showMessage("Importez votre CV PDF avant de lancer l'analyse.", "error");
           return;
         }
         if (!photoFile && !currentCV?.photo_file) {
-          setLocalMessage("Ajoutez une photo de profil : elle est obligatoire.");
+          showMessage("Ajoutez une photo de profil : elle est obligatoire.", "error");
           return;
         }
         const saved = await saveImportContext();
@@ -437,7 +518,7 @@ export function Builder() {
       }
       if (activeStep === "template") {
         if (!selectedTemplateId) {
-          setLocalMessage("Choisissez un modèle pour continuer.");
+          showMessage("Choisissez un modèle pour continuer.", "error");
           return;
         }
         const saved = await saveCurrentCV();
@@ -453,26 +534,26 @@ export function Builder() {
         navigateToStep("export");
       }
     } catch (err) {
-      if (err?.detail || err?.message) setLocalMessage(err.detail || err.message);
+      if (err?.detail || err?.message) showMessage(err.detail || err.message, "error");
     } finally {
       setBusy(false);
     }
   };
 
   const handleAnalyze = async () => {
-    setLocalMessage("");
+    showMessage("");
     setBusy(true);
     try {
       await runAnalysis();
     } catch (err) {
-      if (err?.detail || err?.message) setLocalMessage(err.detail || err.message);
+      if (err?.detail || err?.message) showMessage(err.detail || err.message, "error");
     } finally {
       setBusy(false);
     }
   };
 
   const handleBack = () => {
-    setLocalMessage("");
+    showMessage("");
     setActiveStep(flow[Math.max(stepIndex - 1, 0)].id);
   };
 
@@ -491,21 +572,120 @@ export function Builder() {
         template_mode: "selected",
       });
     } catch (err) {
-      if (err?.detail || err?.message) setLocalMessage(err.detail || err.message);
+      if (err?.detail || err?.message) showMessage(err.detail || err.message, "error");
     }
   };
 
   const handleGenerate = async () => {
     if (!effectiveCvId) return;
-    setLocalMessage("");
+    showMessage("");
     setBusy(true);
     try {
       await saveCurrentCV();
       const result = await generateCV(effectiveCvId);
       await downloadCV(effectiveCvId, title, "pdf");
-      setLocalMessage(result?.warning || "PDF généré et téléchargé. 🎉");
+      showMessage(result?.warning || "PDF généré et téléchargé.");
     } catch (err) {
-      if (err?.detail || err?.message) setLocalMessage(err.detail || err.message);
+      if (err?.code === "photo_required") {
+        // On ramène l'utilisateur là où la photo s'ajoute, avec l'explication.
+        showMessage("Ajoute une photo de profil avant de générer : c'est ici, à l'étape Importer.", "error");
+        navigateToStep("import");
+      } else if (err?.detail || err?.message) {
+        showMessage(err.detail || err.message, "error");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAssistantFinalize = async () => {
+    if (!photoFile && !currentCV?.photo_file) {
+      showMessage("Ajoute ta photo de profil pour terminer.", "error");
+      return;
+    }
+    showMessage("");
+    setBusy(true);
+    try {
+      // Le service peut être très sollicité juste après le dialogue : un
+      // nouvel essai automatique après une courte pause suffit en général.
+      let res;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          res = await cvsApi.assistantFinalize(assistantMessages);
+          break;
+        } catch (err) {
+          if (attempt === 0 && (err?.status === 503 || err?.status === 429)) {
+            showMessage("Organisation en cours — le service est très sollicité, nouvel essai automatique…");
+            await new Promise((resolve) => setTimeout(resolve, 12000));
+            continue;
+          }
+          throw err;
+        }
+      }
+      const organized = normalizeCVData({ ...normalizeCVData(data), ...(res.data || {}) });
+      setData(organized);
+      const saved = await saveCurrentCV({ data: organized });
+      const targetCvId = saved?.id || effectiveCvId;
+      if (photoFile) {
+        const formData = new FormData();
+        formData.append("photo_file", photoFile);
+        formData.append("template_mode", "selected");
+        const uploaded = await uploadContext(targetCvId, formData);
+        if (uploaded?.data) setData(normalizeCVData({ ...organized, ...uploaded.data }));
+      }
+      showMessage("Ton CV est prêt ! Choisis maintenant ton modèle.");
+      navigateToStep("template", targetCvId);
+    } catch (err) {
+      showMessage(err?.detail || err?.message || "Impossible d'organiser le CV. Réessaie.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAdaptToOffer = async () => {
+    if (!jobOfferText.trim() && !jobOfferUrl.trim() && !offerScreenshots.length) {
+      showMessage("Colle le texte de l'offre (ou son lien), ou ajoute sa capture d'écran.", "error");
+      return;
+    }
+    showMessage("");
+    setAdaptReport(null);
+    setBusy(true);
+    try {
+      const saved = await saveCurrentCV();
+      const targetCvId = saved?.id || effectiveCvId;
+      if (offerScreenshots.length) {
+        const formData = new FormData();
+        offerScreenshots.forEach((file) => formData.append("job_offer_file", file));
+        await uploadContext(targetCvId, formData);
+      }
+      const res = await cvsApi.adaptPreview(targetCvId);
+      adaptedDataRef.current = res.adapted_data;
+      setAdaptReport(res.report);
+      if (res.report?.verdict !== "hors_profil") {
+        showMessage("Propositions prêtes — compare, puis « Remplacer » si ça te convient.");
+      }
+    } catch (err) {
+      showMessage(err?.detail || err?.message || "Adaptation impossible. Réessaie.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const applyAdaptation = async () => {
+    if (!adaptedDataRef.current || !effectiveCvId) return;
+    setBusy(true);
+    try {
+      // Crée un NOUVEAU CV adapté (titré avec le poste visé) : l'original
+      // reste intact et pourra être ré-adapté à d'autres offres.
+      const created = await cvsApi.adaptApply(effectiveCvId, adaptedDataRef.current);
+      setAdaptReport(null);
+      adaptedDataRef.current = null;
+      navigate(`/builder/${created.id}?step=edit`, {
+        state: { adaptMessage: `CV adapté créé ✓ (« ${created.title} ») — ton original est conservé.` },
+      });
+      showMessage(`CV adapté créé ✓ (« ${created.title} ») — ton original est conservé.`);
+    } catch (err) {
+      showMessage(err?.detail || err?.message || "Impossible de créer le CV adapté. Réessaie.", "error");
     } finally {
       setBusy(false);
     }
@@ -543,12 +723,12 @@ export function Builder() {
 
   const handleDownload = async (format = "pdf") => {
     if (!effectiveCvId) return;
-    setLocalMessage("");
+    showMessage("");
     setBusy(true);
     try {
       await downloadCV(effectiveCvId, title, format);
     } catch (err) {
-      if (err?.detail || err?.message) setLocalMessage(err.detail || err.message);
+      if (err?.detail || err?.message) showMessage(err.detail || err.message, "error");
     } finally {
       setBusy(false);
     }
@@ -556,7 +736,7 @@ export function Builder() {
 
   const handlePayment = async (planType, targetCvId) => {
     setPaymentBusy(true);
-    setLocalMessage("");
+    showMessage("");
     try {
       const result = await initializePayment(planType, targetCvId);
       if (result.authorization_url) {
@@ -565,7 +745,7 @@ export function Builder() {
       }
       setLocalMessage("Paiement initialisé, mais aucune URL Paystack n'a été retournée.");
     } catch (err) {
-      if (err?.detail || err?.message) setLocalMessage(err.detail || err.message);
+      if (err?.detail || err?.message) showMessage(err.detail || err.message, "error");
     } finally {
       setPaymentBusy(false);
     }
@@ -595,8 +775,8 @@ export function Builder() {
             {rewrite.loading
               ? "Rédaction…"
               : (normalizedData.profile || "").trim()
-                ? "✨ Corriger"
-                : "✨ Rédiger le profil"}
+                ? <><Sparkles size={15} /> Corriger</>
+                : <><Sparkles size={15} /> Rédiger le profil</>}
           </button>
         </div>
         <textarea id="profile" rows={5} value={normalizedData.profile} onChange={(event) => updateField("profile", event.target.value)} />
@@ -640,16 +820,19 @@ export function Builder() {
               <strong>Expérience {index + 1}</strong>
               <Button type="button" variant="outline" onClick={() => removeItem("experiences", index)}>Retirer</Button>
             </div>
-            <Input label="Poste" value={exp.job_title} onChange={(value) => updateExperience(index, "job_title", value)} />
+            <Input label="Poste" hint="L'intitulé exact de ton poste." value={exp.job_title} onChange={(value) => updateExperience(index, "job_title", value)} />
             <Input label="Entreprise" value={exp.company} onChange={(value) => updateExperience(index, "company", value)} />
             <div className="field-grid two">
               <Input label="Lieu" value={exp.location} onChange={(value) => updateExperience(index, "location", value)} />
-              <Input label="Période" value={exp.period} onChange={(value) => updateExperience(index, "period", value)} />
+              <Input label="Période" hint="Ex : Jan. 2024 – Aujourd'hui" value={exp.period} onChange={(value) => updateExperience(index, "period", value)} />
             </div>
-            <div className="form-group">
-              <label>Missions, une par ligne</label>
-              <textarea rows={4} value={listValue(exp.missions)} onChange={(event) => updateExperienceMissions(index, event.target.value)} />
-            </div>
+            <LinesField
+              label="Missions"
+              hint="Ce que tu as fait au quotidien : une action par ligne, appuie sur Entrée pour passer à la suivante."
+              rows={4}
+              value={exp.missions}
+              onChange={(items) => updateExperience(index, "missions", items)}
+            />
           </article>
         ))}
       </div>
@@ -675,15 +858,92 @@ export function Builder() {
         ))}
       </div>
 
+      <div className="edit-block-list">
+        <div className="section-title-row">
+          <h3>Projets réalisés</h3>
+          <Button type="button" variant="outline" onClick={addProject}>Ajouter</Button>
+        </div>
+        <p className="section-copy">Un projet perso, une startup, une réalisation notable — avec, si tu en as une, la distinction ou le prix obtenu.</p>
+        {normalizedData.projects.map((project, index) => (
+          <article key={index} className="edit-block">
+            <div className="section-title-row small">
+              <strong>Projet {index + 1}</strong>
+              <Button type="button" variant="outline" onClick={() => removeItem("projects", index)}>Retirer</Button>
+            </div>
+            <Input label="Titre du projet" hint="Le nom du projet, éventuellement suivi de ton rôle." value={project.title} onChange={(value) => updateProject(index, "title", value)} />
+            <Input label="Sous-titre" hint="Une description courte, en une phrase." value={project.subtitle} onChange={(value) => updateProject(index, "subtitle", value)} />
+            <Input label="Période" hint="Ex : 2025 – Aujourd'hui" value={project.period} onChange={(value) => updateProject(index, "period", value)} />
+            <LinesField
+              label="Réalisations"
+              hint="Une réalisation concrète par ligne (ex : chiffre, résultat, technologie utilisée)."
+              rows={3}
+              value={project.missions}
+              onChange={(items) => updateProject(index, "missions", items)}
+            />
+            <div className="field-subgroup">
+              <p className="field-subgroup-label">🔗 Lien vers le projet (optionnel)</p>
+              <div className="field-grid two">
+                <Input
+                  label="Lien du site / projet"
+                  value={project.link}
+                  onChange={(value) => updateProject(index, "link", value)}
+                  placeholder="Ex : https://exemple.com"
+                />
+                <Input
+                  label="Si pas encore en ligne, précise pourquoi"
+                  value={project.link_note}
+                  onChange={(value) => updateProject(index, "link_note", value)}
+                  placeholder="Ex : Déploiement en cours, démo locale"
+                />
+              </div>
+            </div>
+            <div className="field-subgroup">
+              <p className="field-subgroup-label">🏆 Distinction obtenue pour ce projet (optionnel)</p>
+              <div className="field-grid two">
+                <Input
+                  label="Prix / classement"
+                  value={project.award}
+                  onChange={(value) => updateProject(index, "award", value)}
+                  placeholder="Ex : 3ᵉ Prix — Nom du concours (Mois Année)"
+                />
+                <Input
+                  label="Lien vers les résultats"
+                  value={project.award_link}
+                  onChange={(value) => updateProject(index, "award_link", value)}
+                  placeholder="Ex : https://exemple.com/resultats"
+                />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
       <div className="field-grid two">
-        <div className="form-group">
-          <label>Compétences, une par ligne</label>
-          <textarea rows={6} value={listValue(normalizedData.skills)} onChange={(event) => updateField("skills", splitLines(event.target.value))} />
-        </div>
-        <div className="form-group">
-          <label>Loisirs, un par ligne</label>
-          <textarea rows={6} value={listValue(normalizedData.hobbies)} onChange={(event) => updateField("hobbies", splitLines(event.target.value))} />
-        </div>
+        <LinesField
+          label="Compétences"
+          hint="Tes savoir-faire métier, une compétence par ligne."
+          rows={6}
+          value={normalizedData.skills}
+          onChange={(items) => updateField("skills", items)}
+          placeholder={"Ex : Gestion de projet\nCommunication\nAnalyse de données"}
+        />
+        <LinesField
+          label="Informatique et outils"
+          hint="Les logiciels, technologies et outils que tu maîtrises, un par ligne."
+          rows={6}
+          value={normalizedData.tools}
+          onChange={(items) => updateField("tools", items)}
+          placeholder={"Ex : Microsoft Excel\nDjango\nPostgreSQL"}
+        />
+      </div>
+      <div className="field-grid two">
+        <LinesField
+          label="Loisirs"
+          hint="Un loisir par ligne."
+          rows={6}
+          value={normalizedData.hobbies}
+          onChange={(items) => updateField("hobbies", items)}
+        />
       </div>
 
       <div className="edit-block-list">
@@ -712,10 +972,13 @@ export function Builder() {
               <Button type="button" variant="outline" onClick={() => removeItem("extra_sections", index)}>Retirer</Button>
             </div>
             <Input label="Titre de section" value={section.title} onChange={(value) => updateExtraSection(index, "title", value)} />
-            <div className="form-group">
-              <label>Contenu, une ligne par élément</label>
-              <textarea rows={5} value={listValue(section.items)} onChange={(event) => updateExtraSectionItems(index, event.target.value)} />
-            </div>
+            <LinesField
+              label="Contenu"
+              hint="Un élément par ligne."
+              rows={5}
+              value={section.items}
+              onChange={(items) => updateExtraSection(index, "items", items)}
+            />
           </article>
         ))}
       </div>
@@ -748,7 +1011,9 @@ export function Builder() {
       </nav>
 
       {(error || localMessage) && (
-        <div className={`builder-alert ${error ? "error" : "success"}`}>{error || localMessage}</div>
+        <div className={`builder-alert ${error || localTone === "error" ? "error" : "success"}`} ref={alertRef}>
+          {error || localMessage}
+        </div>
       )}
 
       <div className="builder-layout">
@@ -768,27 +1033,61 @@ export function Builder() {
                 <button type="button" className={entryMode === "manual" ? "active" : ""} onClick={() => chooseEntryMode("manual")}>
                   Saisie manuelle
                 </button>
+                <button type="button" className={entryMode === "assistant" ? "active" : ""} onClick={() => chooseEntryMode("assistant")}>
+                  <MessageCircle size={15} className="icon-inline" /> Assistant
+                </button>
               </div>
 
               <Input label="Titre du CV" value={title} onChange={setTitle} name="title" />
 
-              <div className="upload-grid">
-                {isUploadMode && (
-                  <label className="upload-box required">
-                    <span>CV PDF</span>
-                    <strong>{currentCV?.source_file ? "PDF déjà importé" : getFileName(sourceFile)}</strong>
-                    <small>PDF uniquement, 5 MB maximum</small>
-                    <input type="file" accept="application/pdf,.pdf" onChange={(event) => handleSourceFile(event.target.files?.[0] || null)} />
-                  </label>
-                )}
+              {entryMode === "assistant" ? (
+                <>
+                  <p className="offer-hint">
+                    Réponds aux questions : ton CV se construit tout seul. À la fin, ajoute ta photo et choisis ton modèle.
+                  </p>
+                  <AssistantChat
+                    messages={assistantMessages}
+                    setMessages={setAssistantMessages}
+                    done={assistantDone}
+                    onDone={() => setAssistantDone(true)}
+                  />
+                  {assistantDone && (
+                    <>
+                      <div className="upload-grid">
+                        <label className="upload-box required">
+                          <span>Photo de profil *</span>
+                          <strong>{photoFile ? getFileName(photoFile) : (currentCV?.photo_file ? "Photo ajoutée ✓" : "Obligatoire")}</strong>
+                          <small>Obligatoire. JPG, PNG ou WebP — recadrée automatiquement en photo CV.</small>
+                          <input type="file" accept="image/*" onChange={(event) => setPhotoFile(event.target.files?.[0] || null)} />
+                        </label>
+                      </div>
+                      <div className="export-actions">
+                        <Button type="button" onClick={handleAssistantFinalize} disabled={busy || (!photoFile && !currentCV?.photo_file)}>
+                          {busy ? "Organisation en cours…" : <><Wand2 size={16} /> Organiser mon CV</>}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="upload-grid">
+                  {isUploadMode && (
+                    <label className="upload-box required">
+                      <span>CV PDF</span>
+                      <strong>{currentCV?.source_file ? "PDF déjà importé" : getFileName(sourceFile)}</strong>
+                      <small>PDF uniquement, 5 MB maximum</small>
+                      <input type="file" accept="application/pdf,.pdf" onChange={(event) => handleSourceFile(event.target.files?.[0] || null)} />
+                    </label>
+                  )}
 
-                <label className="upload-box required">
-                  <span>Photo de profil *</span>
-                  <strong>{photoFile ? getFileName(photoFile) : (currentCV?.photo_file ? "Photo ajoutée ✓" : "Obligatoire")}</strong>
-                  <small>Obligatoire. JPG, PNG ou WebP — recadrée automatiquement en photo CV.</small>
-                  <input type="file" accept="image/*" onChange={(event) => setPhotoFile(event.target.files?.[0] || null)} />
-                </label>
-              </div>
+                  <label className="upload-box required">
+                    <span>Photo de profil *</span>
+                    <strong>{photoFile ? getFileName(photoFile) : (currentCV?.photo_file ? "Photo ajoutée ✓" : "Obligatoire")}</strong>
+                    <small>Obligatoire. JPG, PNG ou WebP — recadrée automatiquement en photo CV.</small>
+                    <input type="file" accept="image/*" onChange={(event) => setPhotoFile(event.target.files?.[0] || null)} />
+                  </label>
+                </div>
+              )}
             </section>
           )}
 
@@ -840,7 +1139,7 @@ export function Builder() {
               <p className="eyebrow">Étape 3</p>
               <h2>Vérifie tes informations</h2>
               <div className="review-notice">
-                <span aria-hidden="true">⚠️</span>
+                <AlertTriangle size={15} className="icon-inline" aria-hidden="true" />
                 <p>
                   <strong>Relis bien chaque champ.</strong> La lecture automatique peut sauter ou mal écrire un mot.
                   Corrige et complète ce qui manque avant de continuer.
@@ -913,19 +1212,53 @@ export function Builder() {
               <p className="section-copy">Remplis tes infos. L'IA peut rédiger ton profil et corriger les fautes.</p>
 
               <details className="offer-box">
-                <summary>🎯 Adapter à une offre <span>(optionnel)</span></summary>
-                <p className="offer-hint">Colle l'offre d'emploi visée : « Rédiger le profil » l'orientera vers ce poste.</p>
+                <summary><Target size={15} className="icon-inline" /> Adapter à une offre <span>(optionnel)</span></summary>
+                <p className="offer-hint">
+                  Colle l'offre d'emploi visée, puis clique « Adapter » : le profil, les missions et les compétences
+                  seront reformulés pour ce poste — sans rien inventer ni supprimer.
+                </p>
                 <textarea
                   rows={4}
                   value={jobOfferText}
                   onChange={(event) => setJobOfferText(event.target.value)}
                   placeholder="Colle ici le texte de l'offre d'emploi…"
                 />
+                <label className="upload-box offer-adapt-upload">
+                  <span>… ou capture(s) d'écran / PDF de l'offre</span>
+                  <strong>
+                    {offerScreenshots.length > 1
+                      ? `${offerScreenshots.length} fichiers sélectionnés`
+                      : offerScreenshots[0]?.name || "Image(s) PNG/JPG ou PDF — plusieurs captures possibles"}
+                  </strong>
+                  <small>Image (une ou plusieurs captures) ou fichier PDF : le texte de l'offre est extrait automatiquement.</small>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    multiple
+                    onChange={(event) => setOfferScreenshots(Array.from(event.target.files || []))}
+                  />
+                </label>
+                <div className="export-actions">
+                  <Button
+                    type="button"
+                    className="offer-adapt-cta"
+                    onClick={handleAdaptToOffer}
+                    disabled={busy || (!jobOfferText.trim() && !offerScreenshots.length)}
+                  >
+                    {busy ? "Analyse de l'offre…" : <><Target size={16} /> Adapter le CV à cette offre</>}
+                  </Button>
+                </div>
+                <AdaptProposal
+                  report={adaptReport}
+                  busy={busy}
+                  onReplace={applyAdaptation}
+                  onDismiss={() => setAdaptReport(null)}
+                />
               </details>
 
               <div className="correct-bar">
                 <button type="button" className="btn btn-primary correct-all-btn" onClick={handleCorrectAll} disabled={correction.loading}>
-                  {correction.loading ? "Correction en cours…" : "✨ Corriger tout le CV"}
+                  {correction.loading ? "Correction en cours…" : <><Sparkles size={15} /> Corriger tout le CV</>}
                 </button>
                 <small>Fautes, accents, périodes (ex : « 2025 À 2026 » → « 2025 - 2026 »). Rien n'est supprimé.</small>
               </div>
@@ -954,6 +1287,17 @@ export function Builder() {
               <p className="eyebrow">Export</p>
               <h2>Télécharger le CV</h2>
               <p className="section-copy">Générez le PDF après validation. Le DOCX reste disponible après génération.</p>
+              <label className="aggressive-fit-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(normalizedData.aggressive_fit)}
+                  onChange={(event) => updateField("aggressive_fit", event.target.checked)}
+                />
+                <span>
+                  <strong>Mon CV dépasse une page</strong>
+                  <small>Coche pour forcer une correction plus poussée (compression et réorganisation des sections) afin de tout faire tenir sur une seule page.</small>
+                </span>
+              </label>
               {paymentsEnforced && (
                 <PaymentPanel plans={plans} access={access} cvId={effectiveCvId} onPay={handlePayment} busy={paymentBusy} compact />
               )}
@@ -967,13 +1311,21 @@ export function Builder() {
                     <Button type="button" variant="outline" onClick={() => handleDownload("docx")} disabled={busy}>Télécharger DOCX</Button>
                   </>
                 )}
+                {Boolean(
+                  effectiveCvId &&
+                    (currentCV?.cover_letter || currentCV?.job_offer_text || currentCV?.job_offer_url || currentCV?.job_offer_file)
+                ) && (
+                  <Button type="button" variant="outline" onClick={() => setLetterOpen(true)} disabled={busy}>
+                    <PenLine size={15} /> Lettre de motivation
+                  </Button>
+                )}
               </div>
             </section>
           )}
 
           <div className="builder-nav-actions">
             <Button type="button" variant="outline" onClick={handleBack} disabled={stepIndex === 0 || busy}>Retour</Button>
-            {activeStep !== "export" && activeStep !== "analyze" && (
+            {activeStep !== "export" && activeStep !== "analyze" && !(activeStep === "import" && entryMode === "assistant") && (
               <Button type="button" onClick={handleNext} disabled={busy}>
                 {busy ? "Enregistrement..." : "Continuer"}
               </Button>
@@ -1013,6 +1365,10 @@ export function Builder() {
           )}
         </aside>
       </div>
+
+      {letterOpen && effectiveCvId && (
+        <CoverLetterModal cvId={effectiveCvId} onClose={() => setLetterOpen(false)} />
+      )}
     </div>
   );
 }

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Gift, PenLine, Star } from "lucide-react";
+import { cvsApi } from "../api/client";
 import { useCVStore } from "../stores/cvStore";
 import { Button } from "../components/Button";
+import { CoverLetterModal } from "../components/CoverLetterModal";
 import { CVThumbnail } from "../components/CVThumbnail";
+import { OfferAdaptPanel } from "../components/OfferAdaptPanel";
 import "../styles/Dashboard.css";
 
 function formatDate(value) {
@@ -20,7 +24,7 @@ function AccessBanner({ access, onSubscribe, busy, weeklyPrice }) {
     return (
       <div className="access-banner trial">
         <div>
-          <strong>🎁 Essai gratuit</strong>
+          <strong><Gift size={15} className="icon-inline" /> Essai gratuit</strong>
           <span>Il te reste {days} jour{days > 1 ? "s" : ""}. CV illimités pendant l'essai.</span>
         </div>
         <Button variant="outline" onClick={onSubscribe} disabled={busy}>
@@ -33,7 +37,7 @@ function AccessBanner({ access, onSubscribe, busy, weeklyPrice }) {
     return (
       <div className="access-banner active">
         <div>
-          <strong>⭐ Abonnement actif</strong>
+          <strong><Star size={15} className="icon-inline" /> Abonnement actif</strong>
           <span>{access.cv_credits} CV restant{access.cv_credits > 1 ? "s" : ""} · expire dans {days} jour{days > 1 ? "s" : ""}.</span>
         </div>
       </div>
@@ -70,6 +74,7 @@ export function Dashboard() {
   const [busyId, setBusyId] = useState(null);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [payBusy, setPayBusy] = useState(false);
+  const [letterCvId, setLetterCvId] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -146,6 +151,13 @@ export function Dashboard() {
     });
   };
 
+  // Définit ce CV comme référence : c'est lui qu'on adaptera à toutes les offres.
+  const handleSetReference = (cv) =>
+    withBusy(cv, async () => {
+      await cvsApi.setReference(cv.id);
+      await fetchCVs();
+    });
+
   if (loading && !cvs.length) {
     return (
       <div className="dashboard dashboard-loading">
@@ -177,6 +189,8 @@ export function Dashboard() {
       {access?.payments_enforced && (
         <AccessBanner access={access} onSubscribe={handleSubscribe} busy={payBusy} weeklyPrice={1000} />
       )}
+
+      <OfferAdaptPanel cvs={cvs} />
 
       <section className="dash-stats" aria-label="Statistiques des CV">
         <div>
@@ -223,14 +237,29 @@ export function Dashboard() {
               </Link>
               <div className="document-card-body">
                 <div className="document-title-row">
-                  <div>
-                    <h3>{cv.title}</h3>
+                  <div className="document-title-main">
+                    <h3 className="document-title" title={cv.title}>{cv.title}</h3>
                     <p>{cv.template_name || cv.template_detail?.name || "Modèle"} · {isGenerated ? "Généré" : "Brouillon"}</p>
                   </div>
-                  <span className={`status-pill ${isGenerated ? "ready" : "draft"}`}>
-                    {isGenerated ? "Prêt" : "À finir"}
-                  </span>
+                  <div className="document-title-side">
+                    <button
+                      type="button"
+                      className={`reference-star ${cv.is_reference ? "active" : ""}`}
+                      title={cv.is_reference ? "CV de référence : adapté par défaut à chaque offre" : "Définir comme CV de référence"}
+                      aria-label={cv.is_reference ? "CV de référence" : "Définir comme CV de référence"}
+                      disabled={isBusy}
+                      onClick={() => !cv.is_reference && handleSetReference(cv)}
+                    >
+                      <Star size={15} />
+                    </button>
+                    <span className={`status-pill ${isGenerated ? "ready" : "draft"}`}>
+                      {isGenerated ? "Prêt" : "À finir"}
+                    </span>
+                  </div>
                 </div>
+                {cv.is_reference && (
+                  <p className="reference-note"><Star size={12} className="icon-inline" /> CV de référence — adapté par défaut à chaque nouvelle offre</p>
+                )}
                 <p className="document-date">Dernière mise à jour: {formatDate(cv.updated_at)}</p>
                 <div className="document-actions">
                   <Link to={`/builder/${cv.id}`} className="dash-action-link">
@@ -239,6 +268,11 @@ export function Dashboard() {
                   <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleDuplicate(cv)}>
                     Dupliquer
                   </Button>
+                  {(cv.has_cover_letter || cv.has_job_offer) && (
+                    <Button type="button" variant="outline" disabled={isBusy} onClick={() => setLetterCvId(cv.id)}>
+                      <PenLine size={14} /> Lettre
+                    </Button>
+                  )}
                   <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleGenerate(cv)}>
                     {isBusy ? "..." : isGenerated ? "Regénérer PDF" : "Générer PDF"}
                   </Button>
@@ -256,6 +290,8 @@ export function Dashboard() {
           );
         })}
       </div>
+
+      {letterCvId && <CoverLetterModal cvId={letterCvId} onClose={() => setLetterCvId(null)} />}
     </div>
   );
 }
