@@ -173,6 +173,70 @@ class AccessGrant(models.Model):
         return True
 
 
+class FieldSuggestion(models.Model):
+    """Signal produit : information trouvée dans un CV importé qui ne
+    correspondait à aucun champ connu et a fini dans une section libre
+    (extra_sections). Sert à repérer les champs à ajouter au modèle de
+    données quand plusieurs personnes uploadent le même type d'info."""
+
+    STATUS_PENDING = "pending"
+    STATUS_ADDED = "added"
+    STATUS_DISMISSED = "dismissed"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "À examiner"),
+        (STATUS_ADDED, "Ajouté au modèle"),
+        (STATUS_DISMISSED, "Ignoré"),
+    ]
+
+    label = models.CharField(max_length=255)
+    sample_value = models.TextField(blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="field_suggestions")
+    cv = models.ForeignKey(CV, on_delete=models.SET_NULL, blank=True, null=True, related_name="field_suggestions")
+    occurrences = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-occurrences", "-updated_at"]
+        verbose_name = "Suggestion de champ"
+        verbose_name_plural = "Suggestions de champs"
+
+    def __str__(self):
+        return f"{self.label} ({self.occurrences}x)"
+
+
+class TemplateSubmission(models.Model):
+    """CV importé dont la mise en page a été jugée visuellement réussie par
+    l'IA — conservé pour examen manuel en vue d'un futur modèle du catalogue."""
+
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "À examiner"),
+        (STATUS_APPROVED, "Retenu"),
+        (STATUS_REJECTED, "Rejeté"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="template_submissions")
+    cv = models.ForeignKey(CV, on_delete=models.SET_NULL, blank=True, null=True, related_name="template_submissions")
+    source_pdf = models.FileField(upload_to="template_submissions/")
+    preview_image = models.ImageField(upload_to="template_submissions/previews/", blank=True, null=True)
+    aesthetic_score = models.PositiveSmallIntegerField(blank=True, null=True)
+    aesthetic_notes = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-aesthetic_score", "-created_at"]
+        verbose_name = "CV importé au design retenu"
+        verbose_name_plural = "CV importés au design retenu"
+
+    def __str__(self):
+        return f"{self.user.username} — note {self.aesthetic_score or '?'}/10"
+
+
 class UserActivity(models.Model):
     """Dernière activité API par utilisateur — alimente le compteur « en ligne »
     du tableau de bord admin. Mise à jour par ActivityJWTAuthentication."""

@@ -15,6 +15,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 from django.conf import settings
+from django.core.files.base import ContentFile
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps, UnidentifiedImageError
 from templates.services.design_contracts import template_design_contract
 
@@ -1534,6 +1535,126 @@ def merge_ai_result(cv, result, instruction=""):
     cv.ai_messages = messages[-12:]
     cv.save(update_fields=["data", "ai_data", "ai_error", "ai_status", "status", "ai_messages", "updated_at"])
     return cv
+
+
+def record_field_suggestions(cv):
+    """Signal produit : chaque section libre (extra_sections) qu'un CV importé
+    a dû utiliser faute de champ dédié devient (ou incrémente) une suggestion
+    visible dans l'admin — utile pour repérer les champs à ajouter au modèle
+    quand plusieurs personnes uploadent le même type d'info (permis, dispo...).
+    Ne lève jamais : un souci ici ne doit pas casser l'import du CV."""
+    try:
+        from ..models import FieldSuggestion
+
+        sections = [s for s in ((cv.data or {}).get("extra_sections") or []) if isinstance(s, dict)]
+        for section in sections:
+            label = _safe_text(section.get("title"))
+            if not label:
+                continue
+            sample = ", ".join(_clean_items(section.get("items"))[:3])
+            normalized = label.strip().lower()
+            existing = FieldSuggestion.objects.filter(label__iexact=normalized).first()
+            if existing:
+                existing.occurrences += 1
+                existing.sample_value = sample or existing.sample_value
+                existing.cv = cv
+                existing.user = cv.user
+                existing.save(update_fields=["occurrences", "sample_value", "cv", "user", "updated_at"])
+            else:
+                FieldSuggestion.objects.create(
+                    label=label,
+                    sample_value=sample,
+                    user=cv.user,
+                    cv=cv,
+                )
+    except Exception:
+        pass
+
+
+def score_template_design(cv, config=None):
+    """Fait juger par l'IA (vision) le visuel du PDF importé, et garde une
+    copie dans TemplateSubmission quand la note est bonne (>=7/10) — un vivier
+    de designs à examiner pour un futur modèle du catalogue. Best-effort :
+    ne lève jamais, et ne fait rien si le provider ne gère pas les images ou
+    si un examen existe déjà pour ce CV."""
+    try:
+        from ..models import TemplateSubmission
+
+        if not cv.source_file:
+            return
+        if TemplateSubmission.objects.filter(cv=cv).exists():
+            return
+
+        config = config or _provider_config()
+        if not _has_configured_key(config):
+            return
+        images = _pdf_pages_image_content(cv.source_file, max_pages=1)
+        if not images:
+            return
+
+        prompt = (
+            "Tu es directeur artistique. Regarde cette page de CV : juge UNIQUEMENT "
+            "sa réussite visuelle (mise en page, équilibre, typographie, couleurs), "
+            "pas son contenu ni son orthographe. Réponds en JSON strict avec un score "
+            "de 1 (quelconque) à 10 (vraiment réussi, digne d'être proposé comme modèle) "
+            "et une note courte expliquant pourquoi."
+        )
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["score", "notes"],
+            "properties": {
+                "score": {"type": "integer", "minimum": 1, "maximum": 10},
+                "notes": {"type": "string"},
+            },
+        }
+        if _uses_chat_completions(config):
+            payload = {
+                "model": config["model"],
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": images[0]["image_url"]}},
+                        ],
+                    }
+                ],
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {"name": "design_score", "schema": schema},
+                },
+                "temperature": 0.2,
+                "max_completion_tokens": 300,
+            }
+        else:
+            payload = {
+                "model": config["model"],
+                "input": [{"role": "user", "content": [{"type": "input_text", "text": prompt}, images[0]]}],
+                "text": {
+                    "format": {"type": "json_schema", "name": "design_score", "strict": True, "schema": schema}
+                },
+            }
+
+        response = _ai_responses_create(payload, config)
+        result = _parse_response(response, provider_label=config["label"])
+        score = int(result.get("score") or 0)
+        if not (1 <= score <= 10) or score < 7:
+            return
+
+        preview_content = ContentFile(base64.b64decode(images[0]["image_url"].split(",", 1)[1]))
+        submission = TemplateSubmission(
+            user=cv.user,
+            cv=cv,
+            aesthetic_score=score,
+            aesthetic_notes=_safe_text(result.get("notes")),
+        )
+        source_bytes = Path(cv.source_file.path).read_bytes()
+        submission.source_pdf.save(Path(cv.source_file.name).name, ContentFile(source_bytes), save=False)
+        submission.preview_image.save("preview.jpg", preview_content, save=False)
+        submission.save()
+    except Exception:
+        pass
 
 
 # ---------- Assistant conversationnel : questions -> réponses -> CV structuré ----------

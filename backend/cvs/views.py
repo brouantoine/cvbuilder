@@ -1,3 +1,4 @@
+import threading
 from pathlib import Path
 
 from django.conf import settings
@@ -114,6 +115,31 @@ class CVContextUploadView(APIView):
         return Response(CVSerializer(cv, context={"request": request}).data)
 
 
+def _run_product_signals(cv_id):
+    """Après une analyse IA réussie : repère les infos sans champ dédié
+    (FieldSuggestion) et fait noter le visuel du PDF importé pour un futur
+    modèle (TemplateSubmission). Tourne en tâche de fond (pas de file Celery
+    ici) pour ne pas ralentir la réponse à l'utilisateur ; échoue en
+    silence, ces signaux sont un bonus produit, jamais bloquants."""
+    from django.db import connections
+
+    def _worker():
+        try:
+            from .services.ai import record_field_suggestions, score_template_design
+
+            cv = CV.objects.filter(pk=cv_id).select_related("user").first()
+            if not cv:
+                return
+            record_field_suggestions(cv)
+            score_template_design(cv)
+        except Exception:
+            pass
+        finally:
+            connections.close_all()
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
 class CVAIImproveView(APIView):
     def post(self, request, pk):
         cv = CV.objects.filter(user=request.user).filter(pk=pk).select_related("template").first()
@@ -136,6 +162,7 @@ class CVAIImproveView(APIView):
 
             result = improve_cv(cv, instruction=instruction)
             merge_ai_result(cv, result, instruction=instruction)
+            _run_product_signals(cv.id)
             return Response({
                 "detail": "CV optimisé par IA.",
                 "cv": CVSerializer(cv, context={"request": request}).data,

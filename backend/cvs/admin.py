@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
-from .models import AccessGrant, CV, PaymentTransaction, UserActivity
+from .models import AccessGrant, CV, FieldSuggestion, PaymentTransaction, TemplateSubmission, UserActivity
 
 
 def _user_admin_link(obj):
@@ -120,6 +120,88 @@ class AccessGrantAdmin(admin.ModelAdmin):
         if obj.expires_at is None or obj.expires_at > timezone.now():
             return format_html('<span style="color:#0a7d40;font-weight:600;">Actif</span>')
         return format_html('<span style="color:#b3261e;">Expiré</span>')
+
+
+@admin.register(FieldSuggestion)
+class FieldSuggestionAdmin(admin.ModelAdmin):
+    """Champs rencontrés dans des CV importés qui n'existaient pas encore
+    dans le modèle — triés par fréquence pour prioriser quoi ajouter."""
+
+    list_display = ("label", "occurrences", "sample_preview", "user_link", "status_badge", "updated_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("label", "sample_value", "user__username", "user__email")
+    readonly_fields = ("occurrences", "created_at", "updated_at")
+    date_hierarchy = "created_at"
+    list_select_related = ("user", "cv")
+    raw_id_fields = ("user", "cv")
+    actions = ["mark_added", "mark_dismissed"]
+
+    @admin.display(description="Utilisateur", ordering="user__username")
+    def user_link(self, obj):
+        return _user_admin_link(obj)
+
+    @admin.display(description="Exemple")
+    def sample_preview(self, obj):
+        text = obj.sample_value or ""
+        return text[:80] + ("…" if len(text) > 80 else "")
+
+    @admin.display(description="Statut", ordering="status")
+    def status_badge(self, obj):
+        colors = {"pending": "#b26a00", "added": "#0a7d40", "dismissed": "#6c757d"}
+        color = colors.get(obj.status, "#374151")
+        return format_html('<span style="color:{};font-weight:600;">{}</span>', color, obj.get_status_display())
+
+    @admin.action(description="Marquer comme ajouté au modèle")
+    def mark_added(self, request, queryset):
+        queryset.update(status=FieldSuggestion.STATUS_ADDED)
+
+    @admin.action(description="Ignorer")
+    def mark_dismissed(self, request, queryset):
+        queryset.update(status=FieldSuggestion.STATUS_DISMISSED)
+
+
+@admin.register(TemplateSubmission)
+class TemplateSubmissionAdmin(admin.ModelAdmin):
+    """CV importés au design jugé réussi par l'IA — vivier de futurs modèles."""
+
+    list_display = ("preview_thumb", "user_link", "aesthetic_score", "status_badge", "pdf_link", "created_at")
+    list_filter = ("status", "aesthetic_score", "created_at")
+    search_fields = ("user__username", "user__email", "aesthetic_notes")
+    readonly_fields = ("preview_thumb", "aesthetic_score", "aesthetic_notes", "created_at")
+    date_hierarchy = "created_at"
+    list_select_related = ("user", "cv")
+    raw_id_fields = ("user", "cv")
+    actions = ["mark_approved", "mark_rejected"]
+
+    @admin.display(description="Utilisateur", ordering="user__username")
+    def user_link(self, obj):
+        return _user_admin_link(obj)
+
+    @admin.display(description="Aperçu")
+    def preview_thumb(self, obj):
+        if obj.preview_image:
+            return format_html('<img src="{}" style="height:90px;border-radius:6px;" />', obj.preview_image.url)
+        return "—"
+
+    @admin.display(description="PDF")
+    def pdf_link(self, obj):
+        if obj.source_pdf:
+            return format_html('<a href="{}" target="_blank">ouvrir</a>', obj.source_pdf.url)
+        return "—"
+
+    @admin.display(description="Statut", ordering="status")
+    def status_badge(self, obj):
+        colors = {"pending": "#b26a00", "approved": "#0a7d40", "rejected": "#b3261e"}
+        color = colors.get(obj.status, "#374151")
+        return format_html('<span style="color:{};font-weight:600;">{}</span>', color, obj.get_status_display())
+
+    @admin.action(description="Retenir pour le catalogue")
+    def mark_approved(self, request, queryset):
+        queryset.update(status=TemplateSubmission.STATUS_APPROVED)
+
+    @admin.action(description="Rejeter")
+    def mark_rejected(self, request, queryset):
+        queryset.update(status=TemplateSubmission.STATUS_REJECTED)
 
 
 @admin.register(UserActivity)
