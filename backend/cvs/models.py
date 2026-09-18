@@ -69,6 +69,12 @@ class CV(models.Model):
     generated_file = models.FileField(upload_to="cvs/generated/", blank=True, null=True)
     generated_pdf = models.FileField(upload_to="cvs/generated/", blank=True, null=True)
     generated_at = models.DateTimeField(blank=True, null=True)
+    # Lien public (ex. moncvpro.ci/cv/<slug>) : le candidat le partage à un
+    # recruteur au lieu d'un PDF figé. Le slug est généré une fois et gardé
+    # même si le partage est désactivé, pour que le lien ne change jamais.
+    is_public = models.BooleanField(default=False)
+    public_slug = models.SlugField(max_length=24, unique=True, blank=True, null=True)
+    public_view_count = models.PositiveIntegerField(default=0)
     # Un CV « déverrouillé » a consommé un crédit (ou a été créé pendant l'essai) ;
     # il peut être régénéré/retéléchargé librement ensuite.
     is_unlocked = models.BooleanField(default=False)

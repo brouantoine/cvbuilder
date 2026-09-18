@@ -1,0 +1,105 @@
+.cv-public-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+  min-height: 60vh;
+}
+
+.cv-public-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.cv-public-head .eyebrow {
+  margin: 0 0 0.3rem;
+  color: var(--primary-deep);
+  font-weight: 700;
+  font-size: 0.86rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cv-public-head h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  color: var(--text);
+}
+
+.cv-public-job {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.cv-public-frame-wrap {
+  width: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.cv-public-frame-wrap iframe {
+  border: none;
+  display: block;
+  pointer-events: none;
+}
+
+.cv-public-footer {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.cv-public-footer a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.cv-public-missing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.6rem;
+  min-height: 50vh;
+}
+
+.cv-public-missing h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: var(--text);
+}
+
+.cv-public-missing p {
+  margin: 0 0 0.6rem;
+  color: var(--muted);
+}
+
+@media (max-width: 620px) {
+  .cv-public-page {
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .cv-public-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cv-public-head h1 {
+    font-size: 1.5rem;
+  }
+
+  .cv-public-head .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

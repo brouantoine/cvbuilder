@@ -24,18 +24,21 @@ class CVAdmin(admin.ModelAdmin):
         "ai_status",
         "is_unlocked",
         "pdf_link",
+        "public_link",
+        "public_view_count",
         "created_at",
         "generated_at",
     )
-    list_filter = ("status", "ai_status", "is_unlocked", "template", "template_mode", "created_at")
-    search_fields = ("title", "user__username", "user__email", "job_offer_url")
-    readonly_fields = ("created_at", "updated_at", "generated_at")
+    list_filter = ("status", "ai_status", "is_unlocked", "is_public", "template", "template_mode", "created_at")
+    search_fields = ("title", "user__username", "user__email", "job_offer_url", "public_slug")
+    readonly_fields = ("created_at", "updated_at", "generated_at", "public_slug", "public_view_count")
     date_hierarchy = "created_at"
     list_select_related = ("user", "template")
     raw_id_fields = ("user",)
     fieldsets = (
         ("Général", {"fields": ("user", "template", "title", "status", "is_unlocked", "template_mode")}),
         ("Contenu du CV", {"fields": ("data",)}),
+        ("Partage public", {"fields": ("is_public", "public_slug", "public_view_count"), "classes": ("collapse",)}),
         ("Offre d'emploi ciblée", {"fields": ("job_offer_url", "job_offer_text", "job_offer_file"), "classes": ("collapse",)}),
         ("IA", {"fields": ("ai_status", "ai_error", "ai_data", "ai_messages"), "classes": ("collapse",)}),
         ("Fichiers", {"fields": ("source_file", "photo_file", "generated_file", "generated_pdf", "generated_at"), "classes": ("collapse",)}),
@@ -50,6 +53,15 @@ class CVAdmin(admin.ModelAdmin):
     def pdf_link(self, obj):
         if obj.generated_pdf:
             return format_html('<a href="{}" target="_blank">ouvrir</a>', obj.generated_pdf.url)
+        return "—"
+
+    @admin.display(description="Lien public")
+    def public_link(self, obj):
+        from django.conf import settings
+
+        if obj.is_public and obj.public_slug:
+            base = settings.FRONTEND_URL or ""
+            return format_html('<a href="{0}/cv/{1}" target="_blank">/cv/{1}</a>', base, obj.public_slug)
         return "—"
 
 

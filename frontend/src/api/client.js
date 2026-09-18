@@ -172,6 +172,8 @@ export const cvsApi = {
   duplicate: (id) => api(`/api/cvs/${id}/duplicate/`, { method: "POST" }),
   download: (id, format = "pdf") => apiBlob(`/api/cvs/${id}/download/?file=${format}`),
   setReference: (id) => api(`/api/cvs/${id}/reference/`, { method: "POST" }),
+  share: (id, enable = true) => api(`/api/cvs/${id}/share/`, { method: "POST", body: JSON.stringify({ enable }) }),
+  publicView: (slug) => api(`/api/cvs/public/${slug}/`, { auth: false }),
   writeCoverLetter: (id, body = {}) => api(`/api/cvs/${id}/cover-letter/`, { method: "POST", body: JSON.stringify(body) }),
   downloadCoverLetter: (id) => apiBlob(`/api/cvs/${id}/cover-letter/download/`),
   plans: (cvId) => api(`/api/cvs/plans/${cvId ? `?cv=${cvId}` : ""}`),

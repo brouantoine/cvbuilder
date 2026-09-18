@@ -7,6 +7,7 @@ import { Register } from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
 import { Templates } from "./pages/Templates";
 import { Builder } from "./pages/Builder";
+import { CVPublic } from "./pages/CVPublic";
 import { useAuthStore } from "./stores/authStore";
 import "./App.css";
 
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/cv/:slug" element={<CVPublic />} />
           <Route
             path="/dashboard"
             element={

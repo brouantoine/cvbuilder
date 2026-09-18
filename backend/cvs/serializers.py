@@ -6,6 +6,7 @@ from .models import AccessGrant, CV, PaymentTransaction
 class CVSerializer(serializers.ModelSerializer):
     template_detail = CVTemplateSerializer(source="template", read_only=True)
     has_active_access = serializers.SerializerMethodField()
+    public_url = serializers.SerializerMethodField()
 
     class Meta:
         model = CV
@@ -32,6 +33,9 @@ class CVSerializer(serializers.ModelSerializer):
             "generated_pdf",
             "generated_at",
             "has_active_access",
+            "is_public",
+            "public_url",
+            "public_view_count",
             "created_at",
             "updated_at",
         )
@@ -49,6 +53,8 @@ class CVSerializer(serializers.ModelSerializer):
             "generated_pdf",
             "generated_at",
             "has_active_access",
+            "is_public",
+            "public_view_count",
             "created_at",
             "updated_at",
         )
@@ -62,6 +68,13 @@ class CVSerializer(serializers.ModelSerializer):
 
         return has_active_access(obj.user, obj)
 
+    def get_public_url(self, obj):
+        # Chemin relatif : le frontend préfixe avec son propre domaine
+        # (window.location.origin), pour rester correct en local comme en prod.
+        if not (obj.is_public and obj.public_slug):
+            return ""
+        return f"/cv/{obj.public_slug}"
+
 
 class CVListSerializer(serializers.ModelSerializer):
     """Liste dashboard avec assez de données pour afficher un aperçu fidèle."""
@@ -70,6 +83,7 @@ class CVListSerializer(serializers.ModelSerializer):
     has_active_access = serializers.SerializerMethodField()
     has_job_offer = serializers.SerializerMethodField()
     has_cover_letter = serializers.SerializerMethodField()
+    public_url = serializers.SerializerMethodField()
 
     class Meta:
         model = CV
@@ -89,6 +103,9 @@ class CVListSerializer(serializers.ModelSerializer):
             "generated_pdf",
             "generated_at",
             "has_active_access",
+            "is_public",
+            "public_url",
+            "public_view_count",
             "created_at",
             "updated_at",
         )
@@ -97,6 +114,11 @@ class CVListSerializer(serializers.ModelSerializer):
         from .services.access import has_active_access
 
         return has_active_access(obj.user, obj)
+
+    def get_public_url(self, obj):
+        if not (obj.is_public and obj.public_slug):
+            return ""
+        return f"/cv/{obj.public_slug}"
 
     def get_has_job_offer(self, obj):
         return bool((obj.job_offer_text or "").strip() or obj.job_offer_url or obj.job_offer_file)

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Gift, MoreHorizontal, PenLine, Plus, Star } from "lucide-react";
+import { Gift, MoreHorizontal, PenLine, Plus, Share2, Star } from "lucide-react";
 import { cvsApi } from "../api/client";
 import { useCVStore } from "../stores/cvStore";
 import { Button } from "../components/Button";
@@ -76,6 +76,7 @@ export function Dashboard() {
   const [payBusy, setPayBusy] = useState(false);
   const [letterCvId, setLetterCvId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [shareMessage, setShareMessage] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -159,6 +160,22 @@ export function Dashboard() {
       await fetchCVs();
     });
 
+  // Active le lien public (une fois généré, il ne change plus) et le copie
+  // directement dans le presse-papiers — prêt à coller à un recruteur.
+  const handleShare = (cv) =>
+    withBusy(cv, async () => {
+      const updated = await cvsApi.share(cv.id, true);
+      await fetchCVs();
+      const link = `${window.location.origin}${updated.public_url}`;
+      try {
+        await navigator.clipboard.writeText(link);
+        setShareMessage(`Lien copié : ${link}`);
+      } catch {
+        setShareMessage(`Lien de ${cv.title} : ${link}`);
+      }
+      window.setTimeout(() => setShareMessage(""), 6000);
+    });
+
   if (loading && !cvs.length) {
     return (
       <div className="dashboard dashboard-loading">
@@ -211,6 +228,7 @@ export function Dashboard() {
       </section>
 
       {paymentMessage && <p className="dash-success">{paymentMessage}</p>}
+      {shareMessage && <p className="dash-success">{shareMessage}</p>}
       {error && <p className="form-error global">{error}</p>}
 
       <section className="dash-section-head">
@@ -263,6 +281,11 @@ export function Dashboard() {
                     <span className={`status-pill ${isGenerated ? "ready" : "draft"}`}>
                       {isGenerated ? "Prêt" : "À finir"}
                     </span>
+                    {cv.is_public && (
+                      <span className="status-pill public" title="CV partagé publiquement">
+                        👁 {cv.public_view_count || 0}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {cv.is_reference && (
@@ -298,6 +321,9 @@ export function Dashboard() {
                         {isBusy ? "..." : "Regénérer PDF"}
                       </Button>
                     )}
+                    <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleShare(cv)}>
+                      <Share2 size={14} /> {cv.is_public ? "Copier le lien" : "Partager"}
+                    </Button>
                     <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleDuplicate(cv)}>
                       Dupliquer
                     </Button>

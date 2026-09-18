@@ -438,6 +438,70 @@ class CVSetReferenceView(APIView):
         return Response(CVSerializer(cv, context={"request": request}).data)
 
 
+def _generate_public_slug():
+    import secrets
+
+    for _ in range(10):
+        slug = secrets.token_urlsafe(8).lower().replace("_", "").replace("-", "")[:12]
+        if not CV.objects.filter(public_slug=slug).exists():
+            return slug
+    raise RuntimeError("Impossible de générer un lien unique, réessaie.")
+
+
+class CVShareView(APIView):
+    """POST /api/cvs/{id}/share/ — active/désactive le lien public du CV.
+    Le slug est généré une seule fois puis gardé (le lien ne change jamais,
+    même si le partage est désactivé puis réactivé)."""
+
+    def post(self, request, pk):
+        cv = CV.objects.filter(user=request.user).filter(pk=pk).first()
+        if not cv:
+            return Response({"detail": "CV non trouvé."}, status=status.HTTP_404_NOT_FOUND)
+
+        enable = bool(request.data.get("enable", True))
+        if enable:
+            if not cv.public_slug:
+                cv.public_slug = _generate_public_slug()
+            cv.is_public = True
+        else:
+            cv.is_public = False
+        cv.save(update_fields=["is_public", "public_slug", "updated_at"])
+        return Response(CVSerializer(cv, context={"request": request}).data)
+
+
+class CVPublicView(APIView):
+    """GET /api/cvs/public/{slug}/ — CV partagé, lecture publique sans
+    authentification. Ne renvoie que ce qu'un recruteur a besoin de voir
+    (rendu HTML + poste visé) : jamais l'email, les fichiers sources ou
+    tout autre CV du même compte."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug):
+        from django.db.models import F
+
+        from .renderers.html import resolve_cv_html
+
+        cv = CV.objects.filter(public_slug=slug, is_public=True).select_related("template").first()
+        if not cv:
+            return Response({"detail": "Ce lien n'existe pas ou n'est plus partagé."}, status=status.HTTP_404_NOT_FOUND)
+
+        CV.objects.filter(pk=cv.pk).update(public_view_count=F("public_view_count") + 1)
+
+        data = cv.data or {}
+        full_name = " ".join(part for part in [data.get("first_name", ""), data.get("last_name", "")] if part).strip()
+        try:
+            html = resolve_cv_html(cv.template, data)
+        except Exception as exc:
+            return Response({"detail": f"Aperçu indisponible : {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            "html": html,
+            "candidate_name": full_name or cv.title,
+            "job_title": data.get("job_title", ""),
+        })
+
+
 class CVCoverLetterView(APIView):
     """POST /api/cvs/{id}/cover-letter/ — rédige la lettre de motivation du CV
     (basée sur le CV adapté + l'offre) et la sauvegarde sur le CV.
