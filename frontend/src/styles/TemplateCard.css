@@ -106,19 +106,19 @@
 }
 
 .style-modern {
-  color: #0f766e;
+  color: var(--primary);
 }
 
 .style-creative {
-  color: #9f1239;
+  color: var(--primary-deep);
 }
 
 .style-minimal {
-  color: #374151;
+  color: var(--muted);
 }
 
 .style-colorful {
-  color: #be123c;
+  color: var(--primary-deep);
 }
 
 /* Card Body */
@@ -150,28 +150,28 @@
 }
 
 .category-classic {
-  background-color: #dbeafe;
+  background-color: var(--primary-tint);
   color: var(--primary-hover);
 }
 
 .category-modern {
-  background-color: #ccfbf1;
-  color: #0f766e;
+  background-color: var(--primary-soft);
+  color: var(--primary);
 }
 
 .category-creative {
-  background-color: #ffe4e6;
-  color: var(--danger);
+  background-color: var(--surface-blue);
+  color: var(--primary-deep);
 }
 
 .category-minimal {
-  background-color: #dcfce7;
-  color: #15803d;
+  background-color: var(--surface-soft);
+  color: var(--muted);
 }
 
 .category-colorful {
-  background-color: #fce7f3;
-  color: #be185d;
+  background-color: var(--primary-deep);
+  color: #ffffff;
 }
 
 .template-desc {

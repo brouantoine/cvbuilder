@@ -128,13 +128,13 @@
 }
 
 .access-banner.active {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
+  background: var(--primary-soft);
+  border-color: var(--primary);
 }
 
 .access-banner.ended {
-  background: #fffbeb;
-  border-color: #fde68a;
+  background: var(--surface-soft);
+  border-color: var(--border-strong);
 }
 
 @media (max-width: 620px) {
@@ -332,26 +332,26 @@
 }
 
 .reference-star:hover {
-  color: #d97706;
-  border-color: #d97706;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 .reference-star.active {
-  color: #d97706;
-  border-color: #f59e0b;
-  background: #fffbeb;
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--primary-tint);
   cursor: default;
 }
 
 .reference-star.active svg {
-  fill: #f59e0b;
+  fill: var(--primary);
 }
 
 .reference-note {
   margin: 0;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #b45309;
+  color: var(--primary-deep);
 }
 
 .document-title-row p {
@@ -374,8 +374,8 @@
 }
 
 .status-pill.draft {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--surface-soft);
+  color: var(--muted);
 }
 
 .document-date {
@@ -429,7 +429,7 @@
 .offer-adapt-panel {
   border: 1px solid var(--border, #e2e8f0);
   border-radius: var(--radius, 14px);
-  background: linear-gradient(120deg, var(--primary-tint, #ecfdf5), #ffffff 60%);
+  background: linear-gradient(120deg, var(--primary-tint, #eef4fe), #ffffff 60%);
   margin: 14px 0;
   overflow: hidden;
 }
@@ -461,7 +461,7 @@
 
 .offer-adapt-toggle {
   flex-shrink: 0;
-  background: var(--primary, #10b981);
+  background: var(--primary, #0a56e0);
   color: #ffffff;
   font-weight: 700;
   padding: 9px 16px;
@@ -504,15 +504,15 @@
   display: grid;
   gap: 10px;
   padding: 14px 16px;
-  border: 1px solid var(--primary, #10b981);
+  border: 1px solid var(--primary, #0a56e0);
   border-radius: 12px;
-  background: var(--primary-tint, #ecfdf5);
+  background: var(--primary-tint, #eef4fe);
 }
 
 .adapt-success-title {
   margin: 0;
   font-weight: 700;
-  color: var(--primary-deep, #047857);
+  color: var(--primary-deep, #0b1f3f);
 }
 
 .adapt-success-hint {

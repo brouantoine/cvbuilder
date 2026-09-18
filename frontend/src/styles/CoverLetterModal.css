@@ -58,9 +58,9 @@
 }
 
 .letter-modal-offer {
-  border: 1px solid var(--primary, #10b981);
+  border: 1px solid var(--primary, #0a56e0);
   border-radius: var(--radius, 10px);
-  background: var(--primary-tint, #ecfdf5);
+  background: var(--primary-tint, #eef4fe);
   padding: 0.5rem 0.7rem;
 }
 
@@ -68,7 +68,7 @@
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--primary-deep, #047857);
+  color: var(--primary-deep, #0b1f3f);
 }
 
 .letter-modal-offer-text {
@@ -84,14 +84,14 @@
 .letter-modal-busy {
   margin: 0;
   font-size: 0.82rem;
-  color: var(--primary-deep, #047857);
+  color: var(--primary-deep, #0b1f3f);
   font-weight: 600;
 }
 
 .letter-modal-notice {
   margin: 0;
   font-size: 0.8rem;
-  color: var(--primary-deep, #047857);
+  color: var(--primary-deep, #0b1f3f);
 }
 
 .letter-modal-text {
@@ -154,9 +154,9 @@
 }
 
 .letter-modal-actions .letter-copied {
-  color: var(--primary-deep, #047857);
-  border-color: var(--primary, #10b981);
-  background: var(--primary-tint, #ecfdf5);
+  color: var(--primary-deep, #0b1f3f);
+  border-color: var(--primary, #0a56e0);
+  background: var(--primary-tint, #eef4fe);
 }
 
 @media (max-width: 560px) {

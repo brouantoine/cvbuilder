@@ -121,7 +121,7 @@
 }
 
 .sync-ok {
-  color: #047857;
+  color: var(--primary-deep);
 }
 
 .sync-error {

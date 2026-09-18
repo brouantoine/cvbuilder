@@ -95,35 +95,35 @@
 }
 
 .category-classic {
-  background-color: #dbeafe;
+  background-color: var(--primary-tint);
   color: var(--primary-hover);
 }
 
 .category-modern {
-  background-color: #ccfbf1;
-  color: #0f766e;
+  background-color: var(--primary-soft);
+  color: var(--primary);
 }
 
 .category-creative {
-  background-color: #ffe4e6;
-  color: var(--danger);
+  background-color: var(--surface-blue);
+  color: var(--primary-deep);
 }
 
 .category-minimal {
-  background-color: #f0fdf4;
-  color: #15803d;
+  background-color: var(--surface-soft);
+  color: var(--muted);
 }
 
 .category-colorful {
-  background-color: #fce7f3;
-  color: #be185d;
+  background-color: var(--primary-deep);
+  color: #ffffff;
 }
 
 .modal-premium-badge {
   display: inline-block;
   padding: 4px 12px;
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: var(--primary-deep);
+  color: #ffffff;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 760;
