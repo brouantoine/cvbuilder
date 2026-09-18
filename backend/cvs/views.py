@@ -472,20 +472,24 @@ class CVCoverLetterDownloadView(APIView):
 
 class CVAssistantChatView(APIView):
     """POST /api/cvs/assistant/chat/ — dialogue guidé de création de CV.
-    Body: {messages: [{role, content}…]} -> {reply, done}."""
+    Body: {messages: [{role, content}…]} -> {reply, done, covered, missing}.
+    `covered`/`missing` viennent d'une extraction automatique tournant à
+    chaque tour : le front peut s'en servir pour proposer de continuer avant
+    même que l'assistant ait formellement terminé (ex. après un gros pavé de
+    texte collé d'un coup)."""
 
     def post(self, request):
         from .services.ai import AIServiceError, assistant_chat
 
         messages = request.data.get("messages") or []
         try:
-            reply, done = assistant_chat(messages)
+            reply, done, covered, missing = assistant_chat(messages)
         except AIServiceError as exc:
             return Response(
                 {"detail": str(exc), "code": getattr(exc, "code", "ai_error")},
                 status=getattr(exc, "status_code", 500),
             )
-        return Response({"reply": reply, "done": done})
+        return Response({"reply": reply, "done": done, "covered": covered, "missing": missing})
 
 
 class CVAssistantFinalizeView(APIView):

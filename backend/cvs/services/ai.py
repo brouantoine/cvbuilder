@@ -1553,6 +1553,11 @@ _ASSISTANT_SYSTEM_PROMPT = (
     "ex. « en cours de déploiement » — optionnel) ; 11) loisirs, certifications (optionnel). "
     "Si une réponse couvre déjà plusieurs points, ne les redemande pas. Si le candidat dit qu'il n'a plus rien à ajouter, passe au point suivant. "
     "Reste concis : au plus une phrase de reformulation avant ta question. "
+    "CAS PARTICULIER — le candidat colle d'un coup un pavé de texte (CV existant, plusieurs infos en même temps) : "
+    "chaque tour, un résumé interne te dit exactement ce qui est déjà extrait et ce qu'il manque encore (voir contexte ci-dessous) — "
+    "fie-toi à CE résumé, pas à ta propre lecture de l'historique. Dans ce cas, commence par UNE phrase confirmant ce que tu as bien reçu "
+    "(ex. « Nickel, j'ai récupéré ton identité, 2 expériences et ta formation »), puis pose une question UNIQUEMENT sur un point encore manquant "
+    "d'après ce résumé — ne redemande JAMAIS un point qu'il indique déjà couvert. "
     "FIN DU DIALOGUE : uniquement quand les points 1 à 8 sont tous couverts (ou que le candidat demande explicitement de terminer), "
     "remercie-le, dis-lui qu'il ne reste plus qu'à ajouter sa photo de profil, et termine ta réponse par le marqueur exact " + ASSISTANT_DONE_TOKEN + ". "
     "Le marqueur ne doit JAMAIS apparaître dans une réponse qui contient une question : tant que tu poses une question, pas de marqueur."
@@ -1570,9 +1575,114 @@ def _dialogue_messages(messages, limit=60):
     return cleaned
 
 
+def _assistant_extract_snapshot(dialogue, config):
+    """Extraction structurée à partir du dialogue TEL QU'IL EST — même
+    schéma que l'extraction finale, mais tourne à CHAQUE tour. Objectif :
+    donner à l'agent une vue FIABLE de ce qui est déjà couvert au lieu de
+    compter sur sa seule mémoire conversationnelle — c'est ce qui permet de
+    traiter d'un coup un gros pavé de texte collé par le candidat (toutes
+    ses infos en une fois) sans repartir en questions une par une."""
+    transcript = "\n".join(
+        f"{'Conseiller' if item['role'] == 'assistant' else 'Candidat'} : {item['content']}"
+        for item in dialogue
+    )
+    if not transcript.strip():
+        return {}
+    system_prompt = (
+        "Tu reçois la transcription (même partielle) d'un entretien de construction de CV. "
+        "Structure UNIQUEMENT ce qui a DÉJÀ été donné par le candidat dans le schéma JSON demandé — "
+        "n'invente rien, ne complète rien. Les champs non mentionnés restent vides. "
+        "Réponds uniquement avec le JSON demandé."
+    )
+    user_message = json.dumps({"transcription": transcript}, ensure_ascii=False)
+    try:
+        if _uses_chat_completions(config):
+            payload = {
+                "model": config["model"],
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+                "response_format": {"type": "json_schema", "json_schema": {"name": "cv_ai_result", "schema": _schema()}},
+                "temperature": 0.1,
+                "max_completion_tokens": 2500,
+                **({"reasoning_effort": "low"} if config["provider"] == "groq" else {}),
+            }
+        else:
+            payload = {
+                "model": config["model"],
+                "input": [{"role": "user", "content": [
+                    {"type": "input_text", "text": system_prompt},
+                    {"type": "input_text", "text": user_message},
+                ]}],
+                "text": {"format": {"type": "json_schema", "name": "cv_ai_result", "strict": True, "schema": _schema()}},
+            }
+        response = _ai_responses_create(payload, config)
+        return _clean_ai_data(_parse_response(response, provider_label=config["label"]))
+    except Exception:
+        # Un raté ici ne doit jamais casser la conversation : l'agent continue
+        # simplement à poser des questions sans le contexte de couverture.
+        return {}
+
+
+def _assistant_coverage(data):
+    """Résumé compact « déjà couvert / encore manquant », en français, pour
+    ancrer la question suivante de l'agent sur des faits plutôt que sur sa
+    mémoire de la conversation."""
+    data = data or {}
+    covered, missing = [], []
+
+    def has_text(*keys):
+        return any(_safe_text(data.get(key)) for key in keys)
+
+    if has_text("first_name", "last_name"):
+        covered.append("prénom et nom")
+    else:
+        missing.append("prénom et nom")
+
+    if has_text("job_title"):
+        covered.append("intitulé de poste")
+    else:
+        missing.append("intitulé du poste visé")
+
+    if has_text("phone", "email", "address"):
+        covered.append("coordonnées")
+    else:
+        missing.append("coordonnées (téléphone, email, ville)")
+
+    experiences = _clean_items(data.get("experiences"))
+    if experiences:
+        covered.append(f"{len(experiences)} expérience(s) professionnelle(s)")
+    else:
+        missing.append("expériences professionnelles")
+
+    education = _clean_items(data.get("education"))
+    if education:
+        covered.append(f"{len(education)} formation(s)")
+    else:
+        missing.append("formations et diplômes")
+
+    if _clean_items(data.get("skills")):
+        covered.append("compétences")
+    else:
+        missing.append("compétences clés")
+
+    if _clean_items(data.get("languages")):
+        covered.append("langues")
+    else:
+        missing.append("langues parlées")
+
+    return covered, missing
+
+
 def assistant_chat(messages):
-    """Dialogue guidé de création de CV : renvoie (réponse, terminé).
-    L'assistant pose une question à la fois et signale la fin par un marqueur."""
+    """Dialogue guidé de création de CV : renvoie (réponse, terminé, couvert, manquant).
+    L'assistant pose une question à la fois et signale la fin par un marqueur.
+    À chaque tour, une extraction structurée (voir _assistant_extract_snapshot)
+    tourne en parallèle pour ancrer la question suivante sur ce qui est
+    RÉELLEMENT déjà couvert — pas sur ce que le modèle croit se souvenir —
+    ce qui permet de traiter d'un coup un pavé de texte collé par le
+    candidat plutôt que de reposer des questions déjà répondues."""
     config = _provider_config()
     if not _has_configured_key(config):
         raise AIServiceError(
@@ -1585,10 +1695,19 @@ def assistant_chat(messages):
     if not dialogue:
         dialogue = [{"role": "user", "content": "Bonjour, je veux créer mon CV."}]
 
+    snapshot = _assistant_extract_snapshot(dialogue, config)
+    covered, missing = _assistant_coverage(snapshot)
+    context_note = (
+        "\n\n[CONTEXTE INTERNE — jamais montré au candidat tel quel] "
+        f"D'après une extraction automatique de ses réponses, déjà couvert : {', '.join(covered) or 'rien encore'}. "
+        f"Encore manquant : {', '.join(missing) or 'rien — tout est couvert, tu peux terminer'}."
+    )
+    system_prompt = _ASSISTANT_SYSTEM_PROMPT + context_note
+
     if _uses_chat_completions(config):
         payload = {
             "model": config["model"],
-            "messages": [{"role": "system", "content": _ASSISTANT_SYSTEM_PROMPT}, *dialogue],
+            "messages": [{"role": "system", "content": system_prompt}, *dialogue],
             "temperature": 0.5,
             "max_completion_tokens": 700,
             # gpt-oss (Groq) sait moduler son effort de raisonnement ; les
@@ -1605,7 +1724,7 @@ def assistant_chat(messages):
         payload = {
             "model": config["model"],
             "input": [
-                {"role": "system", "content": [{"type": "input_text", "text": _ASSISTANT_SYSTEM_PROMPT}]},
+                {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
                 *[
                     {"role": item["role"], "content": [{"type": "input_text", "text": item["content"]}]}
                     for item in dialogue
@@ -1619,14 +1738,16 @@ def assistant_chat(messages):
     done = ASSISTANT_DONE_TOKEN in reply
     reply = reply.replace(ASSISTANT_DONE_TOKEN, "").strip()
     # Garde-fous : une réponse qui pose encore une question ne clôt jamais le
-    # dialogue, et un CV ne peut pas être complet en moins de 5 réponses.
+    # dialogue. Le minimum de 5 réponses ne s'applique que s'il manque encore
+    # quelque chose d'après l'extraction — un pavé de texte collé d'un coup
+    # peut légitimement tout couvrir en un seul tour.
     if done and reply.rstrip().endswith("?"):
         done = False
-    if done and sum(1 for item in dialogue if item["role"] == "user") < 5:
+    if done and missing and sum(1 for item in dialogue if item["role"] == "user") < 5:
         done = False
     if not reply:
         reply = "Parfait, il ne reste plus qu'à ajouter ta photo de profil !" if done else "Peux-tu préciser ?"
-    return reply, done
+    return reply, done, covered, missing
 
 
 def assistant_finalize(messages):

@@ -5,11 +5,17 @@ import { cvsApi } from "../api/client";
  * Dialogue guidé de création de CV : le conseiller pose une question à la
  * fois, garde les réponses, et signale la fin (done) — le parent enchaîne
  * alors sur la photo puis l'organisation des informations.
+ *
+ * À chaque échange, le serveur renvoie aussi ce qu'il a déjà extrait
+ * (`covered`) et ce qu'il manque (`missing`) — utile si le candidat colle
+ * toutes ses infos d'un coup : il voit immédiatement ce qui a été compris,
+ * et peut continuer sans attendre que l'assistant ait fini sa liste.
  */
 export function AssistantChat({ messages, setMessages, done, onDone }) {
   const [input, setInput] = useState("");
   const [waiting, setWaiting] = useState(false);
   const [error, setError] = useState("");
+  const [covered, setCovered] = useState([]);
   const listRef = useRef(null);
   const startedRef = useRef(false);
 
@@ -22,6 +28,7 @@ export function AssistantChat({ messages, setMessages, done, onDone }) {
       .assistantChat([])
       .then((res) => {
         setMessages([{ role: "assistant", content: res.reply }]);
+        setCovered(res.covered || []);
         if (res.done) onDone();
       })
       .catch((err) => setError(err?.detail || "Assistant indisponible. Réessaie."))
@@ -46,6 +53,7 @@ export function AssistantChat({ messages, setMessages, done, onDone }) {
     try {
       const res = await cvsApi.assistantChat(next);
       setMessages([...next, { role: "assistant", content: res.reply }]);
+      setCovered(res.covered || []);
       if (res.done) onDone();
     } catch (err) {
       setError(err?.detail || "Réponse impossible. Réessaie.");
@@ -72,6 +80,17 @@ export function AssistantChat({ messages, setMessages, done, onDone }) {
         {waiting && <div className="chat-bubble ai typing">…</div>}
       </div>
       {error && <p className="form-error global">{error}</p>}
+      {!done && covered.length > 0 && (
+        <div className="chat-coverage">
+          <span className="chat-coverage-label">Déjà noté :</span>
+          {covered.map((item) => (
+            <span className="chat-coverage-tag" key={item}>{item}</span>
+          ))}
+          <button type="button" className="chat-coverage-skip" onClick={onDone} disabled={waiting}>
+            Continuer avec ces informations →
+          </button>
+        </div>
+      )}
       {!done && (
         <div className="chat-input-row">
           <textarea
@@ -79,7 +98,7 @@ export function AssistantChat({ messages, setMessages, done, onDone }) {
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Ta réponse… (Entrée pour envoyer)"
+            placeholder="Ta réponse… (colle tout d'un coup si tu préfères — Entrée pour envoyer)"
             disabled={waiting}
           />
           <button type="button" className="btn btn-primary" onClick={send} disabled={waiting || !input.trim()}>
