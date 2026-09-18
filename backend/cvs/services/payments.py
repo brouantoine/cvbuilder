@@ -96,7 +96,7 @@ def initialize_payment(user, plan_type, cv_id=None):
     )
 
     payload = {
-        "email": user.email or f"{user.username}@cvbuilder.local",
+        "email": user.email or f"{user.username}@moncvpro.local",
         "amount": _amount_for_paystack(payment.amount_xof),
         "currency": payment.currency,
         "reference": payment.reference,

@@ -561,7 +561,7 @@ def _fetch_url_text(url):
     if not url.startswith(("http://", "https://")):
         return ""
     try:
-        request = urllib.request.Request(url, headers={"User-Agent": "CVBuilder/1.0"})
+        request = urllib.request.Request(url, headers={"User-Agent": "MonCVPro/1.0"})
         with urllib.request.urlopen(request, timeout=12) as response:
             content_type = response.headers.get("content-type", "")
             raw = response.read(500_000)
@@ -1541,7 +1541,7 @@ def merge_ai_result(cv, result, instruction=""):
 ASSISTANT_DONE_TOKEN = "[CV_TERMINE]"
 
 _ASSISTANT_SYSTEM_PROMPT = (
-    "Tu es le conseiller CVBuilder : tu aides le candidat à construire son CV en lui posant des questions, "
+    "Tu es le conseiller MonCVPro : tu aides le candidat à construire son CV en lui posant des questions, "
     "en français, sur un ton chaleureux et professionnel (tutoiement). Ne mentionne jamais que tu es une IA. "
     "RÈGLES : pose UNE SEULE question courte à la fois, puis attends la réponse. "
     "Suis cet ordre : 1) prénom et nom ; 2) métier/poste visé (l'intitulé du CV) ; 3) coordonnées (téléphone, email, ville) ; "
