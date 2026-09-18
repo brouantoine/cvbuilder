@@ -405,10 +405,17 @@ textarea:focus-visible {
 }
 
 .home-hero {
-  max-width: 760px;
+  max-width: var(--maxw);
   margin: 0 auto;
-  padding: 4.5rem 1.25rem 2.5rem;
-  text-align: center;
+  padding: 4.5rem 1.25rem 3rem;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  gap: 2rem;
+}
+
+.home-hero-copy {
+  max-width: 560px;
 }
 
 .home-eyebrow {
@@ -454,9 +461,86 @@ textarea:focus-visible {
 .home-cta {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.75rem;
   margin-top: 1.9rem;
+}
+
+/* Pile de CV en vedette, à droite du titre */
+.home-spotlight {
+  position: relative;
+  height: 420px;
+  justify-self: center;
+  width: 100%;
+  max-width: 380px;
+}
+
+.spotlight-card {
+  position: absolute;
+  width: 220px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.spotlight-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.spotlight-card-0 {
+  z-index: 3;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+}
+
+.spotlight-card-1 {
+  z-index: 2;
+  top: 64px;
+  left: 4%;
+  transform: rotate(-10deg);
+  filter: saturate(0.85);
+}
+
+.spotlight-card-2 {
+  z-index: 1;
+  top: 64px;
+  right: 2%;
+  transform: rotate(9deg);
+  filter: saturate(0.85);
+}
+
+.home-spotlight:hover .spotlight-card-0 {
+  transform: translateX(-50%) rotate(-1deg) translateY(-8px);
+}
+
+.home-spotlight:hover .spotlight-card-1 {
+  transform: rotate(-12deg) translateY(4px);
+}
+
+.home-spotlight:hover .spotlight-card-2 {
+  transform: rotate(11deg) translateY(4px);
+}
+
+.spotlight-badge {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0.32rem 0.75rem;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
 }
 
 .home-trust {
@@ -571,7 +655,36 @@ textarea:focus-visible {
 /* ============ Responsive ============ */
 @media (max-width: 760px) {
   .home-hero {
+    grid-template-columns: 1fr;
     padding: 2.5rem 1.1rem 1.5rem;
+    gap: 2.5rem;
+    text-align: center;
+  }
+
+  .home-hero-copy {
+    max-width: none;
+    margin: 0 auto;
+  }
+
+  .home-cta {
+    justify-content: center;
+  }
+
+  /* Pile simplifiée : seule la carte vedette reste, centrée. */
+  .home-spotlight {
+    height: 300px;
+    max-width: 240px;
+    margin: 0 auto;
+    order: -1;
+  }
+
+  .spotlight-card-1,
+  .spotlight-card-2 {
+    display: none;
+  }
+
+  .spotlight-card-0 {
+    width: 200px;
   }
 
   .marquee-track img {

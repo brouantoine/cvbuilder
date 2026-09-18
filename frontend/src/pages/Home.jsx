@@ -11,16 +11,18 @@ const STEPS = [
 
 export function Home() {
   const [previews, setPreviews] = useState([]);
+  const [spotlight, setSpotlight] = useState([]);
 
   useEffect(() => {
     templatesApi
       .list()
       .then((templates) => {
-        const images = (templates || [])
-          .map((t) => t.preview_url || t.thumbnail_url)
-          .filter(Boolean)
-          .slice(0, 12);
+        // L'API trie déjà par `order` : les premiers sont les modèles vedettes
+        // mis en avant par le catalogue (Prestige Orange en tête).
+        const ranked = (templates || []).filter((t) => t.preview_url || t.thumbnail_url);
+        const images = ranked.map((t) => t.preview_url || t.thumbnail_url).slice(0, 12);
         setPreviews(images.length ? images : [cvFallback]);
+        setSpotlight(ranked.slice(0, 3));
       })
       .catch(() => setPreviews([cvFallback]));
   }, []);
@@ -30,18 +32,31 @@ export function Home() {
   return (
     <section className="home">
       <div className="home-hero">
-        <span className="home-eyebrow">CV optimisés par IA</span>
-        <h1>
-          Crée un CV qui décroche <span className="accent">l'entretien</span>
-        </h1>
-        <p className="home-sub">Choisis un modèle, remplis tes infos, télécharge. En quelques minutes.</p>
-        <div className="home-cta">
-          <Link className="btn btn-primary btn-lg" to="/builder">Créer mon CV</Link>
-          <Link className="btn btn-outline btn-lg" to="/templates">Voir les modèles</Link>
+        <div className="home-hero-copy">
+          <span className="home-eyebrow">CV optimisés par IA</span>
+          <h1>
+            Crée un CV qui décroche <span className="accent">l'entretien</span>
+          </h1>
+          <p className="home-sub">Choisis un modèle, remplis tes infos, télécharge. En quelques minutes.</p>
+          <div className="home-cta">
+            <Link className="btn btn-primary btn-lg" to="/builder">Créer mon CV</Link>
+            <Link className="btn btn-outline btn-lg" to="/templates">Voir les modèles</Link>
+          </div>
+          <p className="home-trust">
+            <strong>20+ modèles</strong> · Compatible ATS · Photo recadrée automatiquement
+          </p>
         </div>
-        <p className="home-trust">
-          <strong>Compatible ATS</strong> · PDF prêt à envoyer · Photo recadrée automatiquement
-        </p>
+
+        {spotlight.length > 0 && (
+          <div className="home-spotlight" aria-hidden="true">
+            {spotlight.map((template, index) => (
+              <div className={`spotlight-card spotlight-card-${index}`} key={template.slug || index}>
+                <img src={template.preview_url || template.thumbnail_url} alt="" loading="eager" />
+                {index === 0 && <span className="spotlight-badge">★ Modèle vedette</span>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="home-marquee" aria-label="Aperçu des modèles de CV">
