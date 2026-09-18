@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Gift, PenLine, Star } from "lucide-react";
+import { Gift, MoreHorizontal, PenLine, Plus, Star } from "lucide-react";
 import { cvsApi } from "../api/client";
 import { useCVStore } from "../stores/cvStore";
 import { Button } from "../components/Button";
@@ -75,6 +75,7 @@ export function Dashboard() {
   const [paymentMessage, setPaymentMessage] = useState("");
   const [payBusy, setPayBusy] = useState(false);
   const [letterCvId, setLetterCvId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -197,10 +198,12 @@ export function Dashboard() {
           <strong>{stats.total}</strong>
           <span>CV au total</span>
         </div>
+        <div className="dash-stats-sep" aria-hidden="true" />
         <div>
           <strong>{stats.generated}</strong>
           <span>Prêts à envoyer</span>
         </div>
+        <div className="dash-stats-sep" aria-hidden="true" />
         <div>
           <strong>{stats.drafts}</strong>
           <span>Brouillons</span>
@@ -215,15 +218,20 @@ export function Dashboard() {
           <h2>Mes CV</h2>
           <p>Reprenez un CV ou créez-en un nouveau.</p>
         </div>
+        <Link to="/builder" className="dash-new-btn">
+          <Plus size={16} /> Nouveau CV
+        </Link>
       </section>
 
-      <div className="document-grid">
-        <Link to="/builder" className="new-document-card">
-          <span className="new-document-plus">+</span>
-          <strong>Nouveau CV</strong>
-          <small>Importer un PDF ou saisir manuellement</small>
+      {cvs.length === 0 && (
+        <Link to="/builder" className="dash-empty-state">
+          <span className="new-document-plus"><Plus size={20} /></span>
+          <strong>Crée ton premier CV</strong>
+          <small>Importe un PDF ou saisis tes infos toi-même</small>
         </Link>
+      )}
 
+      <div className="document-grid">
         {cvs.map((cv) => {
           const isGenerated = cv.status === "generated" && (cv.generated_pdf || cv.generated_file);
           const isBusy = busyId === cv.id;
@@ -265,26 +273,44 @@ export function Dashboard() {
                   <Link to={`/builder/${cv.id}`} className="dash-action-link">
                     Modifier
                   </Link>
-                  <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleDuplicate(cv)}>
-                    Dupliquer
-                  </Button>
-                  {(cv.has_cover_letter || cv.has_job_offer) && (
-                    <Button type="button" variant="outline" disabled={isBusy} onClick={() => setLetterCvId(cv.id)}>
-                      <PenLine size={14} /> Lettre
-                    </Button>
-                  )}
-                  <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleGenerate(cv)}>
-                    {isBusy ? "..." : isGenerated ? "Regénérer PDF" : "Générer PDF"}
-                  </Button>
-                  {isGenerated && (
+                  {isGenerated ? (
                     <Button type="button" disabled={isBusy} onClick={() => handleDownload(cv)}>
                       Télécharger
                     </Button>
+                  ) : (
+                    <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleGenerate(cv)}>
+                      {isBusy ? "..." : "Générer PDF"}
+                    </Button>
                   )}
-                  <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleDelete(cv)}>
-                    Supprimer
-                  </Button>
+                  <button
+                    type="button"
+                    className="document-more-btn"
+                    aria-label="Plus d'actions"
+                    onClick={() => setExpandedId(expandedId === cv.id ? null : cv.id)}
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
                 </div>
+                {expandedId === cv.id && (
+                  <div className="document-actions document-actions-more">
+                    {isGenerated && (
+                      <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleGenerate(cv)}>
+                        {isBusy ? "..." : "Regénérer PDF"}
+                      </Button>
+                    )}
+                    <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleDuplicate(cv)}>
+                      Dupliquer
+                    </Button>
+                    {(cv.has_cover_letter || cv.has_job_offer) && (
+                      <Button type="button" variant="outline" disabled={isBusy} onClick={() => setLetterCvId(cv.id)}>
+                        <PenLine size={14} /> Lettre
+                      </Button>
+                    )}
+                    <Button type="button" variant="outline" disabled={isBusy} onClick={() => handleDelete(cv)}>
+                      Supprimer
+                    </Button>
+                  </div>
+                )}
               </div>
             </article>
           );

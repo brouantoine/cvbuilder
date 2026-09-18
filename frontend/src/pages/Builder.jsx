@@ -996,19 +996,24 @@ export function Builder() {
         <Link className="quiet-link" to="/dashboard">Mes CV</Link>
       </div>
 
-      <nav className="mobile-flow" aria-label="Étapes du CV">
-        {flow.map((item, index) => (
-          <button
-            type="button"
-            key={item.id}
-            className={`flow-pill ${item.id === activeStep ? "current" : ""} ${index < stepIndex ? "done" : ""}`}
-            onClick={() => setActiveStep(item.id)}
-          >
-            <span>{index + 1}</span>
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      <p className="mobile-flow-progress">
+        Étape {stepIndex + 1} sur {flow.length} · <strong>{flow[stepIndex]?.label}</strong>
+      </p>
+      <div className="mobile-flow-wrap">
+        <nav className="mobile-flow" aria-label="Étapes du CV">
+          {flow.map((item, index) => (
+            <button
+              type="button"
+              key={item.id}
+              className={`flow-pill ${item.id === activeStep ? "current" : ""} ${index < stepIndex ? "done" : ""}`}
+              onClick={() => setActiveStep(item.id)}
+            >
+              <span>{index + 1}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {(error || localMessage) && (
         <div className={`builder-alert ${error || localTone === "error" ? "error" : "success"}`} ref={alertRef}>

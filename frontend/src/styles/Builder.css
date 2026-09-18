@@ -66,6 +66,21 @@
   border: 1px solid var(--border);
 }
 
+.mobile-flow-progress {
+  display: none;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.mobile-flow-progress strong {
+  color: var(--text);
+}
+
+.mobile-flow-wrap {
+  position: relative;
+}
+
 .mobile-flow {
   width: min(100%, 1320px);
   margin: 0 auto 16px;
@@ -996,10 +1011,25 @@
     font-size: 1.34rem;
   }
 
+  .mobile-flow-progress {
+    display: block;
+  }
+
   .mobile-flow {
     margin-left: -12px;
     margin-right: -12px;
     padding-left: 12px;
+  }
+
+  .mobile-flow-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: -12px;
+    bottom: 10px;
+    width: 28px;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.95));
+    pointer-events: none;
   }
 
   .mode-switch,
@@ -1024,6 +1054,18 @@
 
   .section-title-row.small {
     align-items: stretch;
+  }
+
+  .chat-input-row {
+    flex-direction: column;
+  }
+
+  .chat-input-row textarea {
+    width: 100%;
+  }
+
+  .chat-input-row .btn {
+    width: 100%;
   }
 }
 
