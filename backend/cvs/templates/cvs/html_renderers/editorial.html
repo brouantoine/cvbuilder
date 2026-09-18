@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 210mm; font-family: "Helvetica Neue", Arial, sans-serif; color: #2f3133; }
+
+  .page { position: relative; width: 210mm; min-height: 297mm; background: #ffffff; }
+
+  .header { background: {{ palette.dark }}; color: #ffffff; display: flex; align-items: center; gap: 6mm; padding: 9mm 12mm; }
+  .header .avatar { width: 26mm; height: 26mm; border-radius: 3mm; object-fit: cover; border: 1mm solid #ffffff; flex: 0 0 auto; }
+  .header .avatar-fallback { width: 26mm; height: 26mm; border-radius: 3mm; border: 1mm solid #ffffff; display: grid; place-items: center; background: {{ palette.accent }}; font-size: 14pt; font-weight: 800; color: #ffffff; flex: 0 0 auto; }
+  .header-name { font-family: Georgia, "Times New Roman", serif; font-size: 21pt; font-weight: 700; margin: 0; line-height: 1.1; }
+  .header-title { color: {{ palette.accent }}; font-size: 9.5pt; font-style: italic; margin: 1.6mm 0 0; }
+  .header-contact { font-size: 8.6pt; color: #dde3ea; margin: 2mm 0 0; }
+  .header-contact span:not(:last-child)::after { content: " \00b7 "; color: #9fb0c2; }
+
+  .body { padding: 7mm 12mm 9mm; }
+
+  .sec { margin-top: 5.5mm; }
+  .sec:first-child { margin-top: 0; }
+  .sec h2 { color: {{ palette.dark }}; font-size: 10.5pt; text-transform: uppercase; letter-spacing: .3pt; border-bottom: .5mm solid {{ palette.accent }}; padding-bottom: 1.2mm; margin: 0 0 2.8mm; }
+
+  .profile-text { font-size: 9.3pt; line-height: 1.52; color: #3a3d40; text-align: justify; margin: 0; }
+
+  .item { margin-bottom: 3.2mm; }
+  .item:last-child { margin-bottom: 0; }
+  .item-title { font-size: 10pt; font-weight: 700; color: #202325; margin: 0; }
+  .item-meta { font-size: 8.7pt; font-style: italic; color: {{ palette.accent }}; margin: .6mm 0 1.4mm; }
+  .item ul { margin: 0; padding-left: 4mm; }
+  .item ul li { font-size: 9pt; line-height: 1.4; color: #3a3d40; margin-bottom: .5mm; }
+
+  .skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 8mm; }
+  .skills-group h3 { font-size: 9.3pt; font-weight: 700; color: #202325; margin: 0 0 1.4mm; }
+  .skills-group ul { margin: 0; padding-left: 4mm; }
+  .skills-group ul li { font-size: 8.8pt; line-height: 1.38; color: #3a3d40; margin-bottom: .4mm; }
+
+  .split-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm; }
+  .split-cols .col { border-left: none; }
+  .split-cols .col + .col { border-left: .25mm solid #dde1e6; padding-left: 8mm; margin-left: -8mm; }
+  .split-cols h3 { font-size: 9.3pt; font-weight: 700; color: #202325; margin: 0 0 1.4mm; }
+  .split-cols ul { margin: 0; padding-left: 4mm; }
+  .split-cols ul li { font-size: 8.8pt; line-height: 1.4; color: #3a3d40; margin-bottom: .6mm; }
+  .split-cols ul li strong { color: #202325; }
+
+  .interests-text { font-size: 8.9pt; line-height: 1.5; color: #3a3d40; margin: 0; }
+  .interests-text .grp { font-weight: 700; color: #202325; }
+  .interests-text .sep { color: {{ palette.accent }}; margin: 0 2mm; }
+
+  /* Paliers de compression : du plus lisible (fit-0) au plus dense (fit-6).
+     Chaque palier resserre TOUT (texte courant, titres, entêtes de groupe,
+     marges de page et de section) — jamais un seul réglage isolé, sinon le
+     gain par palier est trop faible pour absorber un CV dense. */
+  .page.fit-1 .profile-text, .page.fit-1 .item ul li, .page.fit-1 .skills-group ul li, .page.fit-1 .split-cols ul li { line-height: 1.3; }
+  .page.fit-1 .sec { margin-top: 4.6mm; }
+
+  .page.fit-2 .body { padding: 6mm 11mm 8mm; }
+  .page.fit-2 .profile-text, .page.fit-2 .item ul li, .page.fit-2 .skills-group ul li, .page.fit-2 .split-cols ul li { font-size: 8.8pt; line-height: 1.24; }
+  .page.fit-2 .item { margin-bottom: 2.2mm; }
+  .page.fit-2 .sec { margin-top: 4mm; }
+
+  .page.fit-3 .header { padding: 7.5mm 11mm; }
+  .page.fit-3 .header .avatar, .page.fit-3 .header .avatar-fallback { width: 23mm; height: 23mm; }
+  .page.fit-3 .body { padding: 5mm 11mm 7mm; }
+  .page.fit-3 .profile-text, .page.fit-3 .item ul li, .page.fit-3 .skills-group ul li, .page.fit-3 .split-cols ul li { font-size: 8.4pt; line-height: 1.2; }
+  .page.fit-3 .item-title { font-size: 9.6pt; }
+  .page.fit-3 .sec h2 { font-size: 10pt; margin-bottom: 2.2mm; }
+  .page.fit-3 .skills-group h3, .page.fit-3 .split-cols h3 { font-size: 8.9pt; }
+  .page.fit-3 .item { margin-bottom: 1.8mm; }
+  .page.fit-3 .sec { margin-top: 3.4mm; }
+
+  .page.fit-4 .header { padding: 6mm 10mm; }
+  .page.fit-4 .header .avatar, .page.fit-4 .header .avatar-fallback { width: 20mm; height: 20mm; }
+  .page.fit-4 .header-name { font-size: 18pt; }
+  .page.fit-4 .body { padding: 4.5mm 10mm 6mm; }
+  .page.fit-4 .profile-text, .page.fit-4 .item ul li, .page.fit-4 .skills-group ul li, .page.fit-4 .split-cols ul li { font-size: 8pt; line-height: 1.16; }
+  .page.fit-4 .item-title { font-size: 9.3pt; }
+  .page.fit-4 .item-meta { font-size: 8.3pt; margin: .4mm 0 1mm; }
+  .page.fit-4 .sec h2 { font-size: 9.6pt; margin-bottom: 2mm; }
+  .page.fit-4 .skills-group h3, .page.fit-4 .split-cols h3 { font-size: 8.6pt; }
+  .page.fit-4 .item { margin-bottom: 1.5mm; }
+  .page.fit-4 .sec { margin-top: 2.8mm; }
+  .page.fit-4 .skills-grid { gap: 2.2mm 6mm; }
+
+  .page.fit-5 .header { padding: 5mm 9mm; }
+  .page.fit-5 .header .avatar, .page.fit-5 .header .avatar-fallback { width: 18mm; height: 18mm; }
+  .page.fit-5 .header-name { font-size: 16.5pt; }
+  .page.fit-5 .header-title { font-size: 8.8pt; }
+  .page.fit-5 .header-contact { font-size: 8pt; }
+  .page.fit-5 .body { padding: 3.5mm 9mm 5mm; }
+  .page.fit-5 .profile-text, .page.fit-5 .item ul li, .page.fit-5 .skills-group ul li, .page.fit-5 .split-cols ul li { font-size: 7.7pt; line-height: 1.12; }
+  .page.fit-5 .item-title { font-size: 9pt; }
+  .page.fit-5 .sec h2 { font-size: 9.2pt; margin-bottom: 1.8mm; }
+  .page.fit-5 .skills-group h3, .page.fit-5 .split-cols h3 { font-size: 8.3pt; }
+  .page.fit-5 .item { margin-bottom: 1.2mm; }
+  .page.fit-5 .sec { margin-top: 2.4mm; }
+
+  .page.fit-6 .header { padding: 3.5mm 7mm; }
+  .page.fit-6 .header .avatar, .page.fit-6 .header .avatar-fallback { width: 15mm; height: 15mm; }
+  .page.fit-6 .header-name { font-size: 14pt; }
+  .page.fit-6 .header-title { font-size: 8.2pt; }
+  .page.fit-6 .header-contact { font-size: 7.6pt; }
+  .page.fit-6 .body { padding: 2.5mm 7mm 3mm; }
+  .page.fit-6 .profile-text, .page.fit-6 .item ul li, .page.fit-6 .skills-group ul li, .page.fit-6 .split-cols ul li { font-size: 7.1pt; line-height: 1.04; }
+  .page.fit-6 .item-title { font-size: 8.4pt; }
+  .page.fit-6 .item-meta { font-size: 7.5pt; margin: .2mm 0 .6mm; }
+  .page.fit-6 .sec h2 { font-size: 8.6pt; margin-bottom: 1.2mm; padding-bottom: .6mm; }
+  .page.fit-6 .skills-group h3, .page.fit-6 .split-cols h3 { font-size: 7.7pt; margin-bottom: .8mm; }
+  .page.fit-6 .item { margin-bottom: .8mm; }
+  .page.fit-6 .sec { margin-top: 1.6mm; }
+  .page.fit-6 .skills-grid { gap: 1.4mm 5mm; }
+  .page.fit-6 .interests-text { font-size: 7.5pt; }
+</style>
+</head>
+<body>
+  <section class="page {{ cv.fit_class }}">
+    <div class="header">
+      {% if cv.photo_uri %}<img class="avatar" src="{{ cv.photo_uri }}" alt="">{% else %}<div class="avatar-fallback">{{ cv.initials }}</div>{% endif %}
+      <div>
+        <p class="header-name">{{ cv.full_name }}</p>
+        {% if cv.job_title %}<p class="header-title">{{ cv.job_title }}</p>{% endif %}
+        {% if cv.contact_items %}
+        <p class="header-contact">{% for item in cv.contact_items %}<span>{{ item.value }}</span>{% endfor %}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="body">
+      {% if cv.profile %}
+      <section class="sec">
+        <h2>Profil professionnel</h2>
+        <p class="profile-text">{{ cv.profile }}</p>
+      </section>
+      {% endif %}
+
+      {% if cv.education %}
+      <section class="sec">
+        <h2>Formation</h2>
+        {% for edu in cv.education %}
+        <div class="item">
+          <p class="item-title">{{ edu.degree }}</p>
+          {% if edu.meta %}<p class="item-meta">{{ edu.meta }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if cv.other_extra_sections or cv.tools %}
+      <section class="sec">
+        <h2>Compétences alignées sur le poste</h2>
+        <div class="skills-grid">
+          {% for group in cv.other_extra_sections %}
+          <div class="skills-group">
+            <h3>{{ group.title }}</h3>
+            <ul>{% for item in group.items %}<li>{{ item.label|default:item }}</li>{% endfor %}</ul>
+          </div>
+          {% endfor %}
+          {% if cv.tools %}
+          <div class="skills-group">
+            <h3>Outils informatiques</h3>
+            <ul>{% for tool in cv.tools %}<li>{{ tool }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if cv.experiences %}
+      <section class="sec">
+        <h2>Expériences et activités</h2>
+        {% for exp in cv.experiences %}
+        <div class="item">
+          <p class="item-title">{{ exp.title }}</p>
+          {% if exp.meta %}<p class="item-meta">{{ exp.meta }}</p>{% endif %}
+          {% if exp.missions %}<ul>{% for mission in exp.missions %}<li>{{ mission }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if cv.languages or cv.aptitudes %}
+      <section class="sec">
+        <h2>Langues et savoir-être professionnel</h2>
+        <div class="split-cols">
+          <div class="col">
+            <h3>Langues</h3>
+            <ul>{% for lang in cv.languages %}<li>{{ lang }}</li>{% endfor %}</ul>
+          </div>
+          <div class="col">
+            <h3>Qualités professionnelles</h3>
+            <ul>{% for item in cv.aptitudes %}<li>{{ item.label|default:item }}</li>{% endfor %}</ul>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if cv.hobbies %}
+      <section class="sec">
+        <h2>Centres d'intérêt</h2>
+        <p class="interests-text">{% for hobby in cv.hobbies %}{{ hobby }}{% if not forloop.last %}<span class="sep">&middot;</span>{% endif %}{% endfor %}</p>
+      </section>
+      {% endif %}
+    </div>
+  </section>
+</body>
+</html>

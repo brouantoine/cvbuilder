@@ -51,6 +51,13 @@ HTML_VARIANT_SPECS = {
         "template": "cvs/html_renderers/executive.html",
         "variant": "executive",
     },
+    # Gabarit sur mesure (bandeau marine pleine largeur, une seule colonne) —
+    # jamais dans le catalogue public, réservé aux CV créés à la main pour
+    # reproduire une mise en page de référence fournie par un utilisateur.
+    "editorial": {
+        "template": "cvs/html_renderers/editorial.html",
+        "variant": "editorial",
+    },
 }
 
 
@@ -89,6 +96,11 @@ CATEGORY_PALETTES = {
 
 
 HTML_TEMPLATE_SPECS = {
+    "cv-sur-mesure-editorial": {
+        **HTML_VARIANT_SPECS["editorial"],
+        "label": "Éditorial (sur mesure)",
+        "palette": {"accent": "#c69a4b", "dark": "#16324f", "soft": "#f4f6f9", "muted": "#5b6b7a"},
+    },
     "galerie-cv-001": {
         **HTML_VARIANT_SPECS["sidebar"],
         "label": "Classique lateral",
@@ -1154,8 +1166,11 @@ def _best_layout(template, data, base_name, aggressive=False):
 
     html = render_cv_html(template, data, fit_class=_FIT_LEVELS[start_index])
     pdf = _convert_html_to_pdf(html, base_name)
-    if not _supports_section_move(template):
-        return html, pdf
+    # Les gabarits sans colonne latérale (galerie « sidebar/topband/minimal/
+    # rail/executive ») n'ont personne vers qui redistribuer du contenu, mais
+    # ils méritent quand même la boucle de compression par palier — sans ça,
+    # un seul rendu au niveau estimé est tenté et jamais réessayé.
+    supports_move = _supports_section_move(template)
 
     if _pdf_page_count(pdf) <= 1 and not aggressive:
         # Dé-escalade : l'estimation sur-évalue parfois la densité, ce qui
@@ -1182,8 +1197,9 @@ def _best_layout(template, data, base_name, aggressive=False):
     # version qui a redistribué du contenu (force_fit) l'emporte toujours sur
     # une version qui n'a rien déplacé.
     levels = _FIT_LEVELS[start_index:] if aggressive else _FIT_LEVELS[start_index + 1:]
+    force_options = (False, True) if supports_move else (False,)
     for level in levels:
-        for force in (False, True):
+        for force in force_options:
             alt_html = render_cv_html(template, data, fit_class=level, force_fit=force)
             if alt_html == best_html:
                 continue
