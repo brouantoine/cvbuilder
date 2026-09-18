@@ -114,23 +114,13 @@ textarea:focus-visible {
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.18rem;
-  color: var(--text);
   text-decoration: none;
 }
 
-.logo::before {
-  content: "";
-  width: 30px;
+.logo img {
+  display: block;
   height: 30px;
-  border-radius: 9px;
-  background: linear-gradient(140deg, var(--primary), var(--primary-deep));
-  box-shadow: var(--shadow-blue);
-  -webkit-mask: radial-gradient(circle at 70% 30%, transparent 7px, #000 8px);
-  mask: radial-gradient(circle at 70% 30%, transparent 7px, #000 8px);
+  width: auto;
 }
 
 .header-account {

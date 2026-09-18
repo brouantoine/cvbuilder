@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 import { Button } from "./Button";
 import { GlobalLoader } from "./GlobalLoader";
+import logo from "../assets/logo.png";
 
 export function Layout({ children }) {
   const { user, logout } = useAuthStore();
@@ -17,7 +18,9 @@ export function Layout({ children }) {
       <GlobalLoader />
       <header className="header">
         <div className="header-inner">
-          <Link to="/" className="logo">CVBuilder</Link>
+          <Link to="/" className="logo">
+            <img src={logo} alt="MonCVPro" />
+          </Link>
           <div className="header-account">
             {user ? (
               <>
