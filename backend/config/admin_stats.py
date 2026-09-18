@@ -1,4 +1,4 @@
-"""Statistiques en direct du tableau de bord admin (/zenadmin/stats.json).
+"""Statistiques en direct du tableau de bord admin (/moncvservices/stats.json).
 
 Vue réservée au staff, consommée par le template admin/dashboard_index.html
 qui se rafraîchit automatiquement.
